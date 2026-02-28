@@ -1,36 +1,136 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chainkuns — The Future of Event Ticketing is On-Chain
 
-## Getting Started
+> AI-powered Web3 event ticketing platform. Portfolio project demonstrating full-stack Web3 development.
 
-First, run the development server:
+**Status:** Phase 0 complete ✅ — Project setup & design system
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router, Server Actions, `"use cache"`) |
+| Frontend | React 19, TypeScript (strict), Tailwind v4 |
+| Smart Contract | Solidity 0.8.28+, Hardhat, OpenZeppelin |
+| Database | Supabase (PostgreSQL + RLS + Realtime) |
+| Web3 | Wagmi 2.x, Viem, RainbowKit |
+| Auth | NextAuth v5 + SIWE (Sign In With Ethereum) |
+| Storage | Pinata (IPFS) |
+| AI | OpenAI GPT-4 (event description generation) |
+| Monitoring | Sentry |
+
+---
+
+## Project Setup
+
+### Prerequisites
+- Node.js 18+
+- MetaMask wallet with Sepolia test ETH
+- Accounts: Supabase, Alchemy, Pinata, Upstash, OpenAI, Sentry
+
+### Installation
 
 ```bash
+# Clone and install
+git clone <repo>
+cd chainkuns
+npm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Fill in all values in .env.local
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Phase Progress
 
-## Learn More
+- [x] **Phase 0** — Project setup, design system, UI components
+- [ ] **Phase 1** — Smart contract (EventTicket.sol) + Sepolia deployment
+- [ ] **Phase 2** — Supabase schema + SIWE authentication
+- [ ] **Phase 3** — Public pages (landing, browse events, event detail)
+- [ ] **Phase 4** — Organizer flow (create event, deploy contract, AI description)
+- [ ] **Phase 5** — User flow (buy ticket, My Tickets, QR code)
+- [ ] **Phase 6** — Resale marketplace
+- [ ] **Phase 7** — AI integration (GPT-4 event descriptions)
+- [ ] **Phase 8** — Polish, security audit, Vercel deployment
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Folder Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+chainkuns/
+├── app/                    # Next.js App Router pages
+│   ├── (public)/           # No auth required
+│   ├── (organizer)/        # Organizer auth required
+│   ├── (user)/             # Wallet required
+│   └── api/                # Route handlers
+├── components/
+│   ├── ui/                 # Pure reusable components
+│   ├── layout/             # Header, Footer, Providers
+│   ├── web3/               # Wallet-specific components
+│   ├── events/             # Event feature components
+│   ├── tickets/            # Ticket display components
+│   └── organizer/          # Organizer dashboard components
+├── lib/
+│   ├── supabase/           # Database clients
+│   ├── web3/               # Wagmi config, contract ABI
+│   ├── validations/        # Zod schemas (shared frontend/backend)
+│   └── utils/              # cn(), format helpers
+├── types/                  # TypeScript interfaces
+├── contracts/              # Solidity smart contracts
+└── styles/                 # Tailwind v4 design system
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Design System
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Brand:** CHAIN (gradient violet→cyan) + kuns (white) — dark mode only
+
+**Colors:**
+- Background: `#0a0f0f` (base) → `#111918` (surface) → `#1a2421` (elevated)
+- Accent: `#7c3aed` (violet) → `#00d4aa` (cyan) gradient
+- Text: `#ffffff` primary, `#8a9a95` secondary, `#00d4aa` mono
+
+**Fonts:**
+- Display: Syne (hero headings)
+- Body: Inter (body text)
+- Mono: JetBrains Mono (addresses, hashes, prices)
+
+---
+
+## Security
+
+- ✅ Zod validation on all forms + Server Actions
+- ✅ Rate limiting via Upstash Redis
+- ✅ Idempotency keys to prevent double-minting
+- ✅ SIWE authentication (wallet-based, no passwords)
+- ✅ Supabase RLS on all tables
+- ✅ Environment variable split (server vs browser)
+- ✅ TypeScript strict mode (zero `any`)
+- ✅ Smart contract: ReentrancyGuard + Pausable + Check-Effects-Interactions
+
+---
+
+## Smart Contract Architecture
+
+One `EventTicket.sol` deployed per event (Contract Factory Pattern):
+
+1. Organizer creates event → platform deploys fresh contract
+2. Users mint tickets (`mintTicket`) → NFT minted to wallet
+3. Owners can list for resale (`listTicket`) 
+4. Buyers purchase listed tickets (`buyTicket`) → ETH split with royalty to organizer
+5. Sell back to platform (`sellBack`)
+6. Staff validates ticket at door (`useTicket`)
+
+---
+
+*Portfolio project by [Developer]. Not for commercial use.*

@@ -1,0 +1,470 @@
+/* ── GOOGLE FONTS ── */
+
+/* Syne — Display/hero headings (geometric, modern, tech feel) */
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&display=swap");
+
+/* Inter — Body text (readable, industry standard) */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+/* JetBrains Mono — Wallet addresses, tx hashes, prices */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+/* Import Tailwind base styles */
+@import "tailwindcss";
+
+/* ── DESIGN TOKENS (@theme) ── */
+/* These become Tailwind utility classes automatically.
+   e.g. --color-bg-base → bg-bg-base, text-bg-base, border-bg-base */
+
+@theme {
+  /* ── Background Colors ── */
+  --color-bg-base: #0a0f0f; /* deepest dark — main page background */
+  --color-bg-surface: #111918; /* slightly lighter — card backgrounds */
+  --color-bg-elevated: #1a2421; /* elevated surfaces — modals, hover states */
+
+  /* ── Accent Gradient (Violet → Cyan) ── */
+  --color-accent-from: #7c3aed; /* violet — gradient start */
+  --color-accent-to: #00d4aa; /* cyan — gradient end, also used as mono text color */
+  --color-accent-cyan: #00d4aa; /* standalone cyan for borders, highlights */
+  --color-accent-violet: #7c3aed; /* standalone violet for variety */
+
+  /* ── Text Colors ── */
+  --color-text-primary: #ffffff; /* main body text */
+  --color-text-secondary: #8a9a95; /* muted text — descriptions, metadata */
+  --color-text-mono: #00d4aa; /* wallet addresses, tx hashes, ETH prices */
+
+  /* ── Border Colors ── */
+  --color-border: rgba(0, 212, 170, 0.15); /* default subtle border */
+  --color-border-hover: rgba(0, 212, 170, 0.4); /* border on hover */
+
+  /* ── Status Colors ── */
+  --color-success: #22c55e; /* ticket valid, payment confirmed */
+  --color-error: #ef4444; /* errors, failed transactions */
+  --color-warning: #f59e0b; /* warnings, pending states */
+  --color-info: #3b82f6; /* informational states */
+
+  /* ── Typography ── */
+  --font-display: "Syne", sans-serif; /* hero headings, brand moments */
+  --font-body: "Inter", sans-serif; /* all body text */
+  --font-mono: "JetBrains Mono", monospace; /* addresses, hashes, prices */
+
+  /* ── Spacing Scale ── */
+  --spacing: 4px; /* base unit — all spacing is multiples of 4px */
+
+  /* ── Border Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+}
+
+/* ── BASE STYLES ── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box; /* consistent sizing across all elements */
+}
+
+html {
+  scroll-behavior: smooth; /* smooth scrolling for anchor links */
+  -webkit-font-smoothing: antialiased; /* sharper text on macOS */
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #0a0f0f; /* bg-base — darkest background */
+  color: #ffffff; /* text-primary — white by default */
+  font-family: "Inter", sans-serif; /* body font for all text */
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+
+  /* Subtle animated CSS grid overlay — creates tech grid feel without JS */
+  background-image:
+    linear-gradient(rgba(0, 212, 170, 0.03) 1px, transparent 1px),
+    /* horizontal grid lines */
+    linear-gradient(90deg, rgba(0, 212, 170, 0.03) 1px, transparent 1px); /* vertical grid lines */
+  background-size: 40px 40px; /* grid cell size */
+}
+
+/* ── SCROLLBAR ── */
+
+/* Custom scrollbar to match dark theme */
+::-webkit-scrollbar {
+  width: 6px; /* thin scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0f0f; /* matches bg-base */
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 170, 0.3); /* cyan accent */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 170, 0.5); /* brighter on hover */
+}
+
+/* ── SELECTION ── */
+
+/* Text selection highlight color — matches brand */
+::selection {
+  background: rgba(124, 58, 237, 0.3); /* violet accent */
+  color: #ffffff;
+}
+
+/* ── REUSABLE COMPONENT CLASSES (@layer components) ── */
+/* These are like Tailwind utility classes but for our custom patterns.
+   They can be used directly in className="" props. */
+
+@layer components {
+  /* ── BUTTONS ── */
+
+  /* Primary button — violet→cyan gradient, main CTAs */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2; /* flex layout for icon+text */
+    @apply px-6 py-3; /* comfortable click area */
+    @apply rounded-lg; /* rounded corners */
+    @apply font-semibold text-sm; /* medium-heavy weight */
+    @apply text-white; /* always white text on gradient */
+    @apply bg-gradient-to-r from-accent-from to-accent-to; /* violet → cyan gradient */
+    @apply hover:opacity-90; /* slight dim on hover */
+    @apply active:scale-95; /* press effect */
+    @apply transition-all duration-200; /* smooth all transitions */
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan; /* accessible focus */
+    @apply disabled:opacity-40 disabled:cursor-not-allowed; /* disabled state */
+    @apply cursor-pointer;
+  }
+
+  /* Secondary button — bordered, transparent fill */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-6 py-3;
+    @apply rounded-lg;
+    @apply font-semibold text-sm;
+    @apply text-accent-cyan; /* cyan text */
+    @apply bg-transparent;
+    @apply border border-border; /* subtle border */
+    @apply hover:border-border-hover hover:bg-bg-elevated; /* reveal background on hover */
+    @apply active:scale-95;
+    @apply transition-all duration-200;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply cursor-pointer;
+  }
+
+  /* Ghost button — no border, just text (for less prominent actions) */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-4 py-2;
+    @apply rounded-lg;
+    @apply font-medium text-sm;
+    @apply text-text-secondary; /* muted text */
+    @apply hover:text-text-primary hover:bg-bg-elevated; /* reveal on hover */
+    @apply active:scale-95;
+    @apply transition-all duration-200;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply cursor-pointer;
+  }
+
+  /* Danger button — for destructive actions (cancel event, delist ticket) */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-6 py-3;
+    @apply rounded-lg;
+    @apply font-semibold text-sm;
+    @apply text-white;
+    @apply bg-error; /* red background */
+    @apply hover:opacity-90;
+    @apply active:scale-95;
+    @apply transition-all duration-200;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply cursor-pointer;
+  }
+
+  /* Small button variant — for inline actions */
+  .btn-sm {
+    @apply px-4 py-2 text-xs;
+  }
+
+  /* Large button variant — for hero CTAs */
+  .btn-lg {
+    @apply px-8 py-4 text-base;
+  }
+
+  /* ── CARDS ── */
+
+  /* Surface card — standard content container */
+  .card-surface {
+    @apply bg-bg-surface; /* slightly lighter than base */
+    @apply border border-border; /* subtle cyan border */
+    @apply rounded-xl; /* rounded corners */
+    @apply transition-all duration-300; /* smooth hover */
+  }
+
+  /* Surface card hover state — for clickable cards (events, tickets) */
+  .card-surface-hover {
+    @apply bg-bg-surface border border-border rounded-xl transition-all duration-300;
+    @apply hover:border-border-hover;
+    @apply hover:bg-bg-elevated;
+    @apply hover:shadow-[0_0_20px_rgba(0,212,170,0.08)];
+    @apply cursor-pointer;
+  }
+
+  /* Elevated card — for modals, dropdowns, layered UI */
+  .card-elevated {
+    @apply bg-bg-elevated;
+    @apply border border-border;
+    @apply rounded-xl;
+    @apply shadow-xl shadow-black/50; /* deep shadow to lift from page */
+  }
+
+  /* ── INPUTS ── */
+
+  /* Base input style — all form fields */
+  .input-base {
+    @apply w-full;
+    @apply px-4 py-3;
+    @apply bg-bg-surface; /* dark surface background */
+    @apply border border-border; /* subtle border */
+    @apply rounded-lg;
+    @apply text-text-primary text-sm; /* white text */
+    @apply placeholder:text-text-secondary; /* muted placeholder */
+    @apply focus:outline-none;
+    @apply focus:border-border-hover; /* border brightens on focus */
+    @apply focus:ring-1 focus:ring-accent-cyan/30; /* soft glow ring on focus */
+    @apply transition-all duration-200;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Error state for inputs — red border + ring */
+  .input-error {
+    @apply border-error;
+    @apply focus:border-error focus:ring-error/30;
+  }
+
+  /* ── BADGES ── */
+
+  /* Base badge — small inline status chip */
+  .badge {
+    @apply inline-flex items-center gap-1;
+    @apply px-2.5 py-0.5;
+    @apply rounded-full;
+    @apply text-xs font-medium;
+  }
+
+  /* Active event — green dot + text */
+  .badge-active {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply bg-success/15 text-success border border-success/30;
+  }
+  /* Sold out — red */
+  .badge-soldout {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply bg-error/15 text-error border border-error/30;
+  }
+
+  /* Pending — yellow */
+  .badge-pending {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply bg-warning/15 text-warning border border-warning/30;
+  }
+
+  /* Cancelled — gray */
+  .badge-cancelled {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply bg-text-secondary/15 text-text-secondary border border-text-secondary/30;
+  }
+
+  /* Verified — cyan */
+  .badge-verified {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply bg-accent-cyan/15 text-accent-cyan border border-accent-cyan/30;
+  }
+
+  /* ── TYPOGRAPHY ── */
+
+  /* Gradient text — used for brand moments and key headings */
+  .gradient-text {
+    @apply bg-gradient-to-r from-accent-from to-accent-to; /* violet → cyan */
+    @apply bg-clip-text text-transparent; /* clip gradient to text shape */
+  }
+
+  /* Mono text — wallet addresses, tx hashes, prices */
+  .mono-text {
+    @apply font-mono text-text-mono; /* JetBrains Mono in cyan */
+  }
+
+  /* Display heading — Syne font for hero sections */
+  .display-heading {
+    @apply font-display font-bold;
+    @apply leading-tight tracking-tight;
+  }
+
+  /* ── GRADIENT BORDER ── */
+
+  /* Gradient border trick — border-image doesn't work on rounded corners
+     so we use a ::before pseudo with gradient background instead */
+  .gradient-border {
+    @apply relative;
+    /* Inner content sits on surface background */
+    background: #111918;
+    border-radius: 12px;
+  }
+
+  .gradient-border::before {
+    content: "";
+    @apply absolute inset-0;
+    border-radius: 13px; /* 1px larger than parent to show */
+    padding: 1px;
+    background: linear-gradient(135deg, #7c3aed, #00d4aa);
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude; /* only show the border edges, not the fill */
+  }
+
+  /* ── LAYOUT UTILITIES ── */
+
+  /* Full-page section container with standard padding */
+  .section-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* ── SKELETON LOADING ── */
+
+  /* Animated shimmer placeholder while content loads */
+  .skeleton {
+    @apply bg-bg-elevated;
+    @apply rounded-lg;
+    @apply animate-pulse; /* Tailwind's built-in pulse animation */
+  }
+
+  /* ── DIVIDERS ── */
+
+  /* Horizontal rule in brand colors */
+  .divider {
+    @apply border-t border-border;
+    @apply my-6;
+  }
+}
+
+/* ── CUSTOM ANIMATIONS ── */
+
+/* Glow pulse — used on featured event cards and CTAs */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(0, 212, 170, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 212, 170, 0.25);
+  }
+}
+
+/* Float animation — ticket card mockup in hero */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+/* Fade in from bottom — used on page load staggered reveals */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide in from right — for modals and drawers */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Animation utility classes — apply these directly in JSX */
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+/* Stagger delays for sequential reveal animations */
+.animation-delay-100 {
+  animation-delay: 100ms;
+}
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+.animation-delay-500 {
+  animation-delay: 500ms;
+}
+
+/* ── RESPONSIVE TYPOGRAPHY ── */
+
+/* Hero headline — scales from mobile to desktop */
+.hero-heading {
+  font-family: "Syne", sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.5rem, 6vw, 5rem); /* responsive: min 40px, max 80px */
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+/* Section heading — slightly smaller than hero */
+.section-heading {
+  font-family: "Syne", sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* ── FOCUS MANAGEMENT ── */
+
+/* Remove default focus ring on mouse clicks, keep for keyboard navigation */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid #00d4aa; /* cyan outline for keyboard users */
+  outline-offset: 2px;
+}
