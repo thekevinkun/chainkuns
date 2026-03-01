@@ -1,3 +1,5 @@
+import type { Event } from "@/types";
+
 // Navigation links shown in the header
 export const NAV_LINKS = [
   { href: "/events", label: "Browse Events" },
@@ -108,3 +110,39 @@ export const STATS = [
     label: "ETH in Sales",
   },
 ];
+
+// ── Event filter options ──
+export const CATEGORIES = [
+  { value: "all", label: "All Events" },
+  { value: "music", label: "🎵 Music" },
+  { value: "tech", label: "💻 Tech & Web3" },
+  { value: "art", label: "🎨 Art & Culture" },
+  { value: "sports", label: "⚽ Sports" },
+  { value: "food", label: "🍕 Food & Drink" },
+];
+
+// Sort options for events listing
+export const SORT_OPTIONS = [
+  { value: "date_asc", label: "Date — Soonest First" },
+  { value: "date_desc", label: "Date — Latest First" },
+  { value: "price_asc", label: "Price — Low to High" },
+  { value: "price_desc", label: "Price — High to Low" },
+];
+
+// ── Mock event data for development/testing ──
+export const MOCK_EVENT: Event = {
+  id: "1",
+  organizer_id: "org-1",
+  title: "Ethereum Summit 2025",
+  description:
+    "Join us for the biggest Ethereum event of the year. Three days of talks, workshops, and networking with the brightest minds in Web3. From DeFi to NFTs, smart contract security to Layer 2 scaling — this is the event you cannot miss.",
+  banner_image_url: null,
+  venue: "Bali International Convention Centre",
+  event_date: new Date("2025-12-12T09:00:00").toISOString(),
+  total_supply: 500,
+  ticket_price_eth: 0.05,
+  royalty_percent: 5,
+  contract_address: "0x5e258D6C77CaFEC0D4E0D177be4f7070256962CA",
+  status: "active",
+  created_at: new Date().toISOString(),
+};
