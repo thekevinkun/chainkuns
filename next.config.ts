@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Turbopack — faster HMR including Tailwind v4 CSS changes
-  turbopack: {},
-
+const nextConfig: NextConfig = {  
   // ── Image Optimization ──
   images: {
     remotePatterns: [

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import EventHero from "@/components/events/EventHero";
 import { MOCK_EVENT } from "@/lib/constants";
+import type { Event } from "@/types";
 
 // ── Dynamic Metadata ──
 // Generates unique OG tags per event for social sharing
@@ -52,7 +53,49 @@ export default async function EventDetailPage({
 
   return (
     <div>
+      <JsonLd event={event} />
       <EventHero event={event} />
     </div>
+  );
+}
+
+// ── JSON-LD Structured Data ──
+// Helps Google show event rich snippets in search results
+function JsonLd({ event }: { event: Event }) {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    description: event.description,
+    startDate: event.event_date,
+    location: {
+      "@type": "Place",
+      name: event.venue,
+    },
+    offers: {
+      "@type": "Offer",
+      price: event.ticket_price_eth,
+      priceCurrency: "ETH",
+      availability:
+        event.status === "active"
+          ? "https://schema.org/InStock"
+          : "https://schema.org/SoldOut",
+      url: `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.id}`,
+    },
+    organizer: {
+      "@type": "Organization",
+      name: "Chainkuns",
+      url: process.env.NEXT_PUBLIC_APP_URL,
+    },
+    image:
+      event.banner_image_url ??
+      `${process.env.NEXT_PUBLIC_APP_URL}/og-image.png`,
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+    />
   );
 }
