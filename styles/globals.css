@@ -443,8 +443,8 @@ body {
 .hero-heading {
   font-family: "Syne", sans-serif;
   font-weight: 800;
-  font-size: clamp(2.5rem, 6vw, 5rem); /* responsive: min 40px, max 80px */
-  line-height: 1.1;
+  font-size: clamp(2rem, 4.5vw, 4rem); /* toned down: min 32px, max 56px */
+  line-height: 1.15;
   letter-spacing: -0.02em;
 }
 
