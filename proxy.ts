@@ -26,8 +26,15 @@ const ORGANIZER_PROTECTED_ROUTES = [
 ];
 
 export async function proxy(request: NextRequest) {
+  console.log("Proxy checking request for:", request.url);
   const { pathname } = request.nextUrl;
 
+  if (pathname.startsWith("/api/")) {
+    console.log("API route — skipping proxy");
+    return NextResponse.next();
+  }
+
+  console.log("Checking session for route protection");
   // Get the NextAuth session from the request
   const session = await auth();
 
@@ -75,16 +82,28 @@ export async function proxy(request: NextRequest) {
       },
     );
 
+    console.log("Checking organizer profile for user ID:", session.user.id);
+
     // Check if this user has a verified organizer profile
     const { data: organizer } = await supabase
       .from("organizer_profiles")
-      .select("id, is_verified")
+      .select("id, status")
       .eq("user_id", session.user.id)
       .single();
 
-    if (!organizer || !organizer.is_verified) {
-      // Not a verified organizer — redirect to registration
+    // No profile at all — send to apply page
+    if (!organizer) {
       return NextResponse.redirect(new URL("/organizer/register", request.url));
+    }
+
+    // Profile exists but not approved yet
+    if (organizer.status === "pending") {
+      return NextResponse.redirect(new URL("/organizer/pending", request.url));
+    }
+
+    // Profile rejected
+    if (organizer.status === "rejected") {
+      return NextResponse.redirect(new URL("/organizer/rejected", request.url));
     }
   }
 

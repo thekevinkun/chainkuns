@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import WalletConnect from "@/components/web3/WalletConnect";
+import { WalletConnect } from "@/components/web3";
 
 import { cn } from "@/lib/utils/cn";
 import { NAV_LINKS } from "@/lib/constants";

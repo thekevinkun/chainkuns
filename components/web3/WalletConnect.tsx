@@ -20,10 +20,10 @@ interface WalletConnectProps {
 
 export default function WalletConnect({ className }: WalletConnectProps) {
   // Get connected wallet info from wagmi
-  const { address, chainId, isConnected } = useAccount();
+  const { address, chainId, isConnected, isReconnecting } = useAccount();
 
   // NextAuth session — tells us if user is fully signed in
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   // wagmi hook to request a signature from MetaMask
   const { signMessageAsync } = useSignMessage();
@@ -31,63 +31,89 @@ export default function WalletConnect({ className }: WalletConnectProps) {
   // Ref to prevent signing twice if component re-renders
   const hasSigned = useRef(false);
 
+  const siweSignIn = async () => {
+    try {
+      console.log("Starting SIWE sign in flow", { address, chainId });
+      // Step 1 — fetch a fresh nonce from our server
+      const nonceRes = await fetch("/api/auth/nonce");
+      const { nonce } = await nonceRes.json();
+
+      // Step 2 — build the message the user will sign in MetaMask
+      const message = buildSiweMessage({
+        address: address!,
+        nonce,
+        chainId: chainId!,
+      });
+
+      // Step 3 — ask user to sign the message in MetaMask
+      const signature = await signMessageAsync({ message });
+
+      // Step 4 — send message + signature to NextAuth to create session
+      await signIn("credentials", {
+        message,
+        signature,
+        redirect: false, // don't redirect after sign in
+      });
+    } catch (error) {
+      // User rejected signature or something went wrong
+      console.error("SIWE sign in failed:", error);
+      hasSigned.current = false; // reset so they can try again
+    }
+  };
+
   // ── SIWE Sign In Flow ──
   useEffect(() => {
-    // Only run if wallet is connected but no NextAuth session yet
-    if (!isConnected || !address || !chainId || session || hasSigned.current) {
+    console.log("WalletConnect useEffect triggered", {
+      isConnected,
+      address,
+      chainId,
+      sessionExists: !!session,
+      status,
+    });
+
+    // Wait for NextAuth to finish loading before doing anything
+    if (status === "loading") return;
+
+    // If session already exists — do nothing, already signed in
+    if (session) {
+      console.log("Session already exists, skipping SIWE sign in");
+      hasSigned.current = true;
       return;
     }
 
-    // Mark as signing to prevent double execution
+    console.log("Checking conditions for SIWE sign in");
+
+    // Only trigger SIWE if wallet is connected and no session exists
+    if (!isConnected || !address || !chainId || hasSigned.current) return;
+
     hasSigned.current = true;
 
-    async function siweSignIn() {
-      try {
-        // Step 1 — fetch a fresh nonce from our server
-        const nonceRes = await fetch("/api/auth/nonce");
-        const { nonce } = await nonceRes.json();
-
-        // Step 2 — build the message the user will sign in MetaMask
-        const message = buildSiweMessage({
-          address: address!,
-          nonce,
-          chainId: chainId!,
-        });
-
-        // Step 3 — ask user to sign the message in MetaMask
-        const signature = await signMessageAsync({ message });
-
-        // Step 4 — send message + signature to NextAuth to create session
-        await signIn("credentials", {
-          message: JSON.stringify({
-            domain: window.location.host,
-            address,
-            statement:
-              "Sign in to Chainkuns. This request will not trigger a blockchain transaction or cost any gas fees.",
-            uri: window.location.origin,
-            version: "1",
-            chainId,
-            nonce,
-          }),
-          signature,
-          redirect: false, // don't redirect after sign in
-        });
-      } catch (error) {
-        // User rejected signature or something went wrong
-        console.error("SIWE sign in failed:", error);
-        hasSigned.current = false; // reset so they can try again
-      }
-    }
-
     siweSignIn();
-  }, [isConnected, address, chainId, session, signMessageAsync]);
+  }, [isConnected, address, chainId, session, status, signMessageAsync]);
+
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    console.log("RainbowKit mounted");
+    mounted.current = true;
+  }, []);
 
   // ── Sign Out When Wallet Disconnects ──
   useEffect(() => {
-    if (!isConnected && session) {
-      signOut({ redirect: false });
-      hasSigned.current = false;
-    }
+    if (!session) return;
+    if (isConnected) return;
+
+    // Wait 3 seconds before signing out
+    // This gives wagmi time to reconnect on page refresh
+    const timer = setTimeout(() => {
+      if (!isConnected) {
+        console.log("Wallet disconnected — signing out");
+        signOut({ redirect: false });
+        hasSigned.current = false;
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, [isConnected, session]);
 
   // ── Custom UI ──

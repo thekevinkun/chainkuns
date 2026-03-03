@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   // ── Image Optimization ──
   images: {
     remotePatterns: [
+      // Supabase Storage domains
+      {
+        protocol: "https",
+        hostname: "nwxphwacfkzyjgbadcwv.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
       // Pinata IPFS gateway — ticket images and event banners stored here
       {
         protocol: "https",

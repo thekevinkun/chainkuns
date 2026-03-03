@@ -26,9 +26,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         try {
           // Parse the SIWE message from the credentials
-          const siwe = new SiweMessage(
-            JSON.parse(credentials?.message as string),
-          );
+          const siwe = new SiweMessage(credentials?.message as string);
 
           // Verify the signature is valid
           // This proves the user actually owns the wallet
