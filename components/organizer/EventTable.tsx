@@ -14,7 +14,7 @@ const EventTable = ({ events }: { events: Event[] }) => {
         <p className="text-text-secondary">
           You haven't created any events yet.
         </p>
-        <Link href="/organizer/events/create">
+        <Link href="/events/create">
           <Button variant="secondary">Create your first event</Button>
         </Link>
       </Card>
@@ -61,7 +61,7 @@ const EventTable = ({ events }: { events: Event[] }) => {
                   : "—"}
               </td>
               <td className="px-6 py-4">
-                <Link href={`/organizer/events/${event.id}/manage`}>
+                <Link href={`/events/${event.id}/manage`}>
                   <Button size="sm" variant="ghost">
                     Manage
                   </Button>

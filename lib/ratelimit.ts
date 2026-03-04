@@ -14,7 +14,7 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN ?? "", // Upstash token from env
 });
 
-// ── Rate Limiters ──────────────────────────────────────────────────
+// ── Rate Limiters ──
 
 // Mint ticket — 3 per hour per wallet address
 // Prevents one person from buying all tickets instantly
@@ -52,7 +52,7 @@ export const generalRateLimiter = new Ratelimit({
   analytics: true,
 });
 
-// ── Helper Function ────────────────────────────────────────────────
+// ── Helper Function ──
 
 // Call this at the top of any Server Action to check the rate limit
 // Pass the wallet address or IP address as the identifier

@@ -82,10 +82,12 @@ body {
   min-height: 100vh;
 
   /* Subtle animated CSS grid overlay — creates tech grid feel without JS */
-  background-image:
-    linear-gradient(rgba(0, 212, 170, 0.03) 1px, transparent 1px),
+  background-image: linear-gradient(
+      rgba(0, 212, 170, 0.03) 1px,
+      transparent 1px
+    ),
     /* horizontal grid lines */
-    linear-gradient(90deg, rgba(0, 212, 170, 0.03) 1px, transparent 1px); /* vertical grid lines */
+      linear-gradient(90deg, rgba(0, 212, 170, 0.03) 1px, transparent 1px); /* vertical grid lines */
   background-size: 40px 40px; /* grid cell size */
 }
 
@@ -324,12 +326,9 @@ body {
     border-radius: 13px; /* 1px larger than parent to show */
     padding: 1px;
     background: linear-gradient(135deg, #7c3aed, #00d4aa);
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);
-    mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude; /* only show the border edges, not the fill */
   }
@@ -467,4 +466,11 @@ body {
 :focus-visible {
   outline: 2px solid #00d4aa; /* cyan outline for keyboard users */
   outline-offset: 2px;
+}
+
+/* Fix datetime-local calendar icon color on dark theme */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* inverts black to white */
+  opacity: 0.5; /* slightly muted */
+  cursor: pointer;
 }

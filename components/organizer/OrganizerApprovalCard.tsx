@@ -49,8 +49,8 @@ const OrganizerApprovalCard = ({
               <Image
                 src={application.logo_url}
                 alt={application.display_name}
-                width={56}
-                height={56}
+                width={90}
+                height={90}
                 className="rounded-xl object-cover flex-shrink-0"
               />
             ) : (
@@ -74,8 +74,13 @@ const OrganizerApprovalCard = ({
               )}
               {application.created_at && (
                 <p className="text-xs text-text-secondary">
-                  Applied{" "}
-                  {new Date(application.created_at).toLocaleDateString()}
+                  Applied in{" "}
+                  {new Date(application.created_at).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </p>
               )}
             </div>

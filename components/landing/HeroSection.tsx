@@ -24,7 +24,7 @@ const HeroSection = () => {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-text-secondary text-lg md:text-xl leading-relaxed mb-8 max-w-lg">
+          <p className="text-text-secondary text-lg leading-relaxed mb-8">
             Buy, sell, and verify event tickets as NFTs. Automatic royalties for
             organizers. Zero middlemen. Powered by Ethereum.
           </p>
@@ -35,7 +35,7 @@ const HeroSection = () => {
               Browse Events
             </Link>
             <Link href="/organizer/register" className="btn-secondary btn-lg">
-              Create an Event
+              Become an Organizer
             </Link>
           </div>
         </div>

@@ -6,10 +6,12 @@
 
 "use client";
 
-import { cn } from "@/lib/utils/cn";
+import { useId } from "react";
 import { forwardRef } from "react";
+import { cn } from "@/lib/utils/cn";
 
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface TextareaProps
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string; // label shown above
   error?: string; // Zod error message
   helperText?: string; // hint text below
@@ -20,8 +22,8 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     { label, error, helperText, className, id, ...props },
     ref,
   ) {
-    const textareaId =
-      id ?? `textarea-${Math.random().toString(36).slice(2, 7)}`;
+    const generatedId = useId();
+    const textareaId = id ?? `textarea-${generatedId}`;
 
     return (
       <div className="flex flex-col gap-1.5">

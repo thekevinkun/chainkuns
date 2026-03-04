@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WalletConnect } from "@/components/web3";
 
 import { cn } from "@/lib/utils/cn";
 import { NAV_LINKS } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
 
 const Header = () => {
   // Controls mobile menu open/closed state
@@ -15,13 +17,49 @@ const Header = () => {
   // Current URL path — used to highlight active nav link
   const pathname = usePathname();
 
+  // Check if user is logged in and if they are an organizer (for dashboard link)
+  const { data: session } = useSession();
+  const [organizerStatus, setOrganizerStatus] = useState<string | null>(null);
+
+  // Fetch organizer status when session changes
+  useEffect(() => {
+    if (!session?.user?.address) {
+      setOrganizerStatus(null);
+      return;
+    }
+
+    async function fetchOrganizerStatus() {
+      const supabase = createClient();
+
+      // Get user ID from wallet address
+      const { data: user } = await supabase
+        .from("users")
+        .select("id")
+        .eq("wallet_address", session!.user.address)
+        .single();
+
+      if (!user) return;
+
+      // Get organizer profile status
+      const { data: profile } = await supabase
+        .from("organizer_profiles")
+        .select("status")
+        .eq("user_id", user.id)
+        .single();
+
+      setOrganizerStatus(profile?.status ?? null); // null = not applied yet
+    }
+
+    fetchOrganizerStatus();
+  }, [session]);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg-base/80 backdrop-blur-md">
       {/* Center-constrained layout container */}
       <div className="section-container">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center h-16">
           {/* ── Brand Logo (Left) ── */}
-          <Link href="/" className="flex items-center gap-1 group">
+          <Link href="/" className="flex flex-1 items-center gap-1 group">
             {/* CHAIN in gradient, kuns in white — typographic wordmark */}
             <span className="font-display font-bold text-xl tracking-tight">
               <span className="gradient-text">CHAIN</span>
@@ -31,7 +69,7 @@ const Header = () => {
 
           {/* ── Desktop Navigation (Center) ── */}
           <nav
-            className="hidden md:flex items-center gap-1"
+            className="hidden md:flex items-center gap-1 flex-shrink-0"
             aria-label="Main navigation"
           >
             {NAV_LINKS.map((link) => (
@@ -39,7 +77,7 @@ const Header = () => {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "btn-ghost",
                   pathname === link.href
                     ? "text-text-primary bg-bg-elevated" // active: highlighted
                     : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated/50", // inactive
@@ -51,7 +89,22 @@ const Header = () => {
           </nav>
 
           {/* ── Right Side: Wallet + Mobile Toggle ── */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-1 items-center justify-end gap-3">
+            {/* Dashboard — only for approved organizers */}
+            {organizerStatus === "approved" && (
+              <Link
+                href="/dashboard"
+                className={cn(
+                  "hidden md:flex btn-ghost text-accent-cyan",
+                  pathname === "/dashboard"
+                    ? "bg-bg-elevated" // active: highlighted
+                    : "hover:bg-bg-elevated/50", // inactive
+                )}
+              >
+                Dashboard
+              </Link>
+            )}
+
             {/* Wallet connection button — shows address when connected */}
             <WalletConnect />
 
@@ -115,7 +168,7 @@ const Header = () => {
                 href={link.href}
                 onClick={() => setIsMobileOpen(false)} // close menu on link click
                 className={cn(
-                  "px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                  "btn-ghost",
                   pathname === link.href
                     ? "text-text-primary bg-bg-elevated"
                     : "text-text-secondary hover:text-text-primary",
@@ -125,14 +178,37 @@ const Header = () => {
               </Link>
             ))}
 
-            {/* Dashboard link — only show if user is an organizer (Phase 3+) */}
-            <Link
-              href="/dashboard"
-              onClick={() => setIsMobileOpen(false)}
-              className="px-4 py-3 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary"
-            >
-              Organizer Dashboard
-            </Link>
+            {/* Dashboard — only for approved organizers */}
+            {organizerStatus === "approved" && (
+              <Link
+                href="/dashboard"
+                onClick={() => setIsMobileOpen(false)}
+                className={cn(
+                  "btn-ghost text-accent-cyan",
+                  pathname === "/dashboard"
+                    ? "bg-bg-elevated" // active: highlighted
+                    : "hover:bg-bg-elevated/50", // inactive
+                )}
+              >
+                Dashboard
+              </Link>
+            )}
+
+            {/* Become an Organizer — only if not yet applied */}
+            {session && !organizerStatus && (
+              <Link
+                href="/organizer/register"
+                onClick={() => setIsMobileOpen(false)}
+                className={cn(
+                  "btn-ghost text-accent-cyan",
+                  pathname === "/dashboard"
+                    ? "bg-bg-elevated" // active: highlighted
+                    : "hover:bg-bg-elevated/50", // inactive
+                )}
+              >
+                Become an Organizer
+              </Link>
+            )}
           </nav>
         </div>
       )}

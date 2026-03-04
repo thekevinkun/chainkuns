@@ -69,7 +69,7 @@ export default async function OrganizerDashboardPage() {
           </h1>
           <p className="text-muted-foreground">Here's your overview.</p>
         </div>
-        <Link href="/organizer/events/create">
+        <Link href="/events/create">
           <Button>Create Event</Button>
         </Link>
       </div>

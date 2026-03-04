@@ -120,3 +120,17 @@ export interface EventAnalytics {
   tickets_used: number; // scanned at door
   active_listings: number; // currently listed for resale
 }
+
+// ── Form Data Type ──
+// Matches CreateEventSchema fields exactly
+// number | "" allows empty inputs without TypeScript errors
+export interface EventFormState {
+  title: string; // event name
+  description: string; // event description (can be AI generated)
+  venue: string; // event location
+  event_date: string; // ISO datetime string
+  total_supply: number | ""; // max tickets available
+  ticket_price_eth: number | ""; // price per ticket in ETH
+  royalty_percent: number | ""; // % organizer gets on resale (max 10%)
+  banner_image_url: string | null; // Supabase Storage URL after upload
+}

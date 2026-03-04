@@ -6,8 +6,9 @@
 
 "use client";
 
-import { cn } from "@/lib/utils/cn";
+import { useId } from "react";
 import { forwardRef } from "react";
+import { cn } from "@/lib/utils/cn";
 
 // Props extend native input attributes (value, onChange, type, placeholder, etc.)
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -25,7 +26,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   ref,
 ) {
   // Generate an ID if none provided — links label to input for accessibility
-  const inputId = id ?? `input-${Math.random().toString(36).slice(2, 7)}`;
+  const generatedId = useId();
+  const inputId = id ?? `input-${generatedId}`;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -63,8 +65,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             error
               ? `${inputId}-error`
               : helperText
-                ? `${inputId}-helper`
-                : undefined
+              ? `${inputId}-helper`
+              : undefined
           }
           {...props}
         />
