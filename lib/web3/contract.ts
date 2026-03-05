@@ -53,6 +53,15 @@ export const CONTRACT_ABI = [
     outputs: [{ type: "uint256", name: "" }],
   },
 
+  // Returns true if contract is paused — used by ContractControls to show status
+  {
+    name: "paused",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "bool", name: "" }],
+  },
+
   // Royalty percentage the organizer earns on every resale
   {
     name: "royaltyPercent",
