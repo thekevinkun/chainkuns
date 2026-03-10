@@ -34,7 +34,7 @@ export type EventStatus = "draft" | "active" | "completed" | "cancelled";
 // A ticketed event created by an approved organizer
 export interface Event {
   id: string; // UUID
-  organizer_id: string; // references OrganizerProfile.id
+  organizer_id: string | null; // references OrganizerProfile.id
   title: string; // event name
   description: string | null; // long description (AI-generated or manual)
   banner_image_url: string | null; // IPFS image URL shown as event banner
@@ -44,8 +44,8 @@ export interface Event {
   ticket_price_eth: number; // price in ETH (e.g. 0.05)
   royalty_percent: number; // % organizer earns on every resale (0-10)
   contract_address: string | null; // deployed EventTicket.sol address on Sepolia
-  status: EventStatus; // current state of the event
-  created_at: string;
+  status: EventStatus | null; // current state of the event
+  created_at: string | null;
   organizer?: OrganizerProfile; // joined from organizer_profiles when fetching event details
 }
 
@@ -54,13 +54,13 @@ export interface Event {
 // A single NFT ticket owned by a user
 export interface Ticket {
   id: string; // UUID in Supabase
-  event_id: string; // references Event.id
+  event_id: string | null; // references Event.id
   token_id: number; // the NFT token ID on-chain
   owner_wallet: string; // current owner's ETH address
-  is_used: boolean; // true once scanned at the door
+  is_used: boolean | null; // true once scanned at the door
   mint_tx_hash: string | null; // transaction hash proving the mint happened
-  idempotency_key: string; // prevents double-minting on network failure
-  created_at: string;
+  idempotency_key: string | null; // prevents double-minting on network failure
+  created_at: string | null;
   event?: Event; // joined from events when fetching user's tickets
 }
 

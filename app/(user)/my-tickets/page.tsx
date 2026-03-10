@@ -1,13 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { TicketCard } from "@/components/tickets";
-import type { Ticket, Event } from "@/types";
+import { MyTickets } from "@/components/tickets";
+import type { TicketWithEvent } from "@/types";
 import { createClient } from "@/lib/supabase/server";
-
-// Row type returned by Supabase join — events is a nested object
-type TicketWithEvent = Omit<Ticket, "event"> & {
-  event: Event | null; // joined from events table
-};
 
 export const metadata = {
   title: "My Tickets",
@@ -56,49 +51,7 @@ export default async function MyTicketsPage() {
   }
 
   // Cast to our typed shape — Supabase returns event as object not array
-  const typedTickets = (tickets ?? []) as TicketWithEvent[];
+  const typedTickets = tickets ?? [];
 
-  return (
-    <main className="section-container py-24 flex flex-col gap-10">
-      {/* Page header */}
-      <div className="flex flex-col gap-2">
-        <h1 className="section-heading text-text-primary">My Tickets</h1>
-        <p className="text-text-secondary">
-          {typedTickets.length > 0
-            ? `${typedTickets.length} ticket${
-                typedTickets.length === 1 ? "" : "s"
-              } in your wallet`
-            : "No tickets yet"}
-        </p>
-      </div>
-
-      {/* Empty state */}
-      {typedTickets.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
-          <span className="text-6xl">🎟</span>
-          <h3 className="font-display font-bold text-text-primary text-xl">
-            No tickets yet
-          </h3>
-          <p className="text-text-secondary text-sm max-w-xs">
-            Browse upcoming events and mint your first NFT ticket.
-          </p>
-          <a href="/events" className="btn-primary mt-2">
-            Browse Events
-          </a>
-        </div>
-      )}
-
-      {/* Tickets grid */}
-      {typedTickets.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {typedTickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket as Ticket} // cast — event field matches our Ticket type
-            />
-          ))}
-        </div>
-      )}
-    </main>
-  );
+  return <MyTickets typedTickets={typedTickets as TicketWithEvent[]} />;
 }

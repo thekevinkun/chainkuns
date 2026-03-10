@@ -60,7 +60,7 @@ export default async function OrganizerDashboardPage() {
     }, 0) ?? 0;
 
   return (
-    <main className="section-container mx-auto py-24 space-y-10">
+    <main className="section-container mx-auto py-12 space-y-10">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">

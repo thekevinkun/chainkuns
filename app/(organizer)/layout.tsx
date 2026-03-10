@@ -4,7 +4,10 @@ import { auth } from "@/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Organizer Dashboard",
+  title: {
+    default: "Organizer Dashboard | Chainkuns",
+    template: "%s | Chainkuns", // individual pages add their title before the pipe
+  },
   robots: { index: false, follow: false },
 };
 

@@ -18,7 +18,7 @@ const TicketDetail = ({ typed, event }: TicketDetailProps) => {
   });
 
   return (
-    <main className="section-container py-24">
+    <main className="section-container py-12">
       <div className="max-w-2xl mx-auto flex flex-col gap-8">
         {/* Banner image */}
         <div

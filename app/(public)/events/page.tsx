@@ -43,7 +43,7 @@ export default async function EventsPage() {
 
   // ── Render ──
   return (
-    <div className="section-container py-12 md:py-24">
+    <div className="section-container py-12">
       {/* ── Page header ── */}
       <div className="mb-8">
         <h1 className="text-3xl font-display font-bold text-text-primary">

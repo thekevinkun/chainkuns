@@ -1,3 +1,4 @@
+import MyTickets from "./MyTickets";
 import ContractControls from "./ContractControls";
 import QRScanner from "./QRScanner";
 import TicketSalesTable from "./TicketSalesTable";
@@ -6,6 +7,7 @@ import TicketQR from "./TicketQR";
 import TicketDetail from "./TicketDetail";
 
 export {
+  MyTickets,
   ContractControls,
   QRScanner,
   TicketSalesTable,
