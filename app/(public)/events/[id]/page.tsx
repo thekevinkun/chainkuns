@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import EventHero from "@/components/events/EventHero";
-import { MOCK_EVENT } from "@/lib/constants";
+import { EventHero } from "@/components/events";
+
 import type { Event } from "@/types";
+import { createClient } from "@/lib/supabase/server";
 
 // ── Dynamic Metadata ──
 // Generates unique OG tags per event for social sharing
@@ -11,9 +12,13 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  // TODO Phase 5: fetch real event from Supabase using params.id
   const { id } = await params;
-  const event = id === "1" ? MOCK_EVENT : null;
+  const supabase = await createClient();
+  const { data: event } = await supabase
+    .from("events")
+    .select("title, description, banner_image_url") // only what metadata needs
+    .eq("id", id)
+    .single();
 
   if (!event) {
     return { title: "Event Not Found" };
@@ -21,10 +26,10 @@ export async function generateMetadata({
 
   return {
     title: event.title,
-    description: event.description ?? undefined,
+    description: event.description ?? "Buy NFT tickets on Chainkuns.",
     openGraph: {
       title: event.title,
-      description: event.description ?? undefined,
+      description: event.description ?? "Buy NFT tickets on Chainkuns.",
       images: event.banner_image_url
         ? [event.banner_image_url]
         : ["/og-image.png"],
@@ -32,7 +37,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: event.title,
-      description: event.description ?? undefined,
+      description: event.description ?? "Buy NFT tickets on Chainkuns.",
     },
   };
 }
@@ -44,24 +49,67 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
-  // TODO Phase 5: fetch real event from Supabase
-  const event = id === "1" ? MOCK_EVENT : null;
+  const supabase = await createClient();
+  const { data: event } = await supabase
+    .from("events")
+    .select(
+      `
+      *,
+      organizer_profiles ( display_name, logo_url )
+    `,
+    ) // join organizer_profiles to get real name
+    .eq("id", id)
+    .single();
 
   // Show 404 if event not found
   if (!event) notFound();
 
+  // Count tickets sold for this event
+  const { count: ticketsSold } = await supabase
+    .from("tickets")
+    .select("*", { count: "exact", head: true })
+    .eq("event_id", id);
+
+  const available = event.total_supply - (ticketsSold ?? 0);
+
+  // Extract organizer name and logo from the joined data
+  const organizerName =
+    (
+      event.organizer_profiles as {
+        display_name: string;
+        logo_url: string | null;
+      } | null
+    )?.display_name ?? "Chainkuns Organizer";
+  const organizerLogo =
+    (
+      event.organizer_profiles as {
+        display_name: string;
+        logo_url: string | null;
+      } | null
+    )?.logo_url ?? null;
+
   return (
     <div>
-      <JsonLd event={event} />
-      <EventHero event={event} />
+      <JsonLd event={event as Event} organizerName={organizerName} />
+      <EventHero
+        event={event as Event}
+        organizerName={organizerName}
+        organizerLogo={organizerLogo}
+        available={available}
+      />
     </div>
   );
 }
 
 // ── JSON-LD Structured Data ──
 // Helps Google show event rich snippets in search results
-function JsonLd({ event }: { event: Event }) {
+function JsonLd({
+  event,
+  organizerName,
+}: {
+  event: Event;
+  organizerName: string;
+}) {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -80,16 +128,16 @@ function JsonLd({ event }: { event: Event }) {
         event.status === "active"
           ? "https://schema.org/InStock"
           : "https://schema.org/SoldOut",
-      url: `${process.env.NEXT_PUBLIC_APP_URL}/events/${event.id}`,
+      url: `${process.env.NEXT_PUBLIC_SITE_URL}/events/${event.id}`,
     },
     organizer: {
       "@type": "Organization",
-      name: "Chainkuns",
-      url: process.env.NEXT_PUBLIC_APP_URL,
+      name: organizerName,
+      url: process.env.NEXT_PUBLIC_SITE_URL,
     },
     image:
       event.banner_image_url ??
-      `${process.env.NEXT_PUBLIC_APP_URL}/og-image.png`,
+      `${process.env.NEXT_PUBLIC_SITE_URL}/og-image.png`,
   };
 
   return (

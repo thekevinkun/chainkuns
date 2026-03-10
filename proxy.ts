@@ -4,117 +4,97 @@
 // is allowed to access the requested route
 //
 // Protected routes:
-// - /tickets, /profile → requires wallet login (any user)
+// - /user/tickets, /profile → requires wallet login (any user)
 // - /dashboard, /events/create, /events/manage → requires verified organizer
 // ============================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth"; // NextAuth session checker
-import { createServerClient } from "@supabase/ssr";
+import { auth } from "@/auth";
+
+// Fully public routes — skip ALL checks, no auth() call
+const PUBLIC_ROUTES = [
+  "/",
+  "/events",
+  "/organizer/pending",
+  "/organizer/rejected",
+  "/organizer/register",
+];
 
 // Routes any logged-in wallet user can access
 const USER_PROTECTED_ROUTES = [
-  "/tickets", // My Tickets page
-  "/profile", // User profile
+  "/my-tickets", // My Tickets page
+  "/tickets",
+  "/profile",
 ];
 
 // Routes only verified organizers can access
 const ORGANIZER_PROTECTED_ROUTES = [
-  "/dashboard", // Organizer dashboard
-  "/events/create", // Create new event
-  "/events/manage", // Manage existing event
+  "/dashboard",
+  "/events/create",
+  "/events/manage",
 ];
 
 export async function proxy(request: NextRequest) {
-  console.log("Proxy checking request for:", request.url);
   const { pathname } = request.nextUrl;
 
+  // Skip API routes immediately
   if (pathname.startsWith("/api/")) {
-    console.log("API route — skipping proxy");
     return NextResponse.next();
   }
 
-  console.log("Checking session for route protection");
-  // Get the NextAuth session from the request
+  // Skip public routes immediately — no auth() call at all
+  const isPublic = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+  if (isPublic) {
+    return NextResponse.next();
+  }
+
+  // Only call auth() for protected routes
   const session = await auth();
 
-  // ── Check user-protected routes ──
+  // ── User protected routes ──
   const isUserProtected = USER_PROTECTED_ROUTES.some((route) =>
     pathname.startsWith(route),
   );
 
   if (isUserProtected && !session) {
-    // Not logged in — redirect to home
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // ── Check organizer-protected routes ──
+  // ── Organizer protected routes ──
   const isOrganizerProtected = ORGANIZER_PROTECTED_ROUTES.some((route) =>
     pathname.startsWith(route),
   );
 
   if (isOrganizerProtected) {
     if (!session) {
-      // Not logged in — redirect home
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    // Create a response to attach cookie updates to
-    const response = NextResponse.next({
-      request: { headers: request.headers },
-    });
+    // Read status directly from JWT — zero database calls
+    const status = session.user.organizerStatus;
 
-    // Create Supabase client to check organizer status
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set(name, value, options);
-            });
-          },
-        },
-      },
-    );
-
-    console.log("Checking organizer profile for user ID:", session.user.id);
-
-    // Check if this user has a verified organizer profile
-    const { data: organizer } = await supabase
-      .from("organizer_profiles")
-      .select("id, status")
-      .eq("user_id", session.user.id)
-      .single();
-
-    // No profile at all — send to apply page
-    if (!organizer) {
+    if (!status) {
       return NextResponse.redirect(new URL("/organizer/register", request.url));
     }
-
-    // Profile exists but not approved yet
-    if (organizer.status === "pending") {
+    if (status === "pending") {
       return NextResponse.redirect(new URL("/organizer/pending", request.url));
     }
-
-    // Profile rejected
-    if (organizer.status === "rejected") {
+    if (status === "rejected") {
       return NextResponse.redirect(new URL("/organizer/rejected", request.url));
     }
+
+    // status === "approved" — let them through
+    return NextResponse.next({
+      request: { headers: request.headers },
+    });
   }
 
-  // All checks passed — allow the request through
+  // All checks passed
   return NextResponse.next({
     request: { headers: request.headers },
   });
 }
 
-// Tell Next.js which paths this proxy applies to
-// Excludes static files, images, and API routes
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*|api/).*)"],
 };

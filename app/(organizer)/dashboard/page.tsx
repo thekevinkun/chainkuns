@@ -9,7 +9,7 @@ import { AnalyticsCard, EventTable } from "@/components/organizer";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Dashboard — Chainkuns",
+  title: "Dashboard",
   robots: { index: false, follow: false },
 };
 

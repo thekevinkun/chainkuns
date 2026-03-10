@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { FOOTER_LINKS } from "@/lib/constants";
 
@@ -74,6 +76,6 @@ const Footer = () => {
       </div>
     </footer>
   );
-}
+};
 
 export default Footer;

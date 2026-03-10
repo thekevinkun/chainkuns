@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import EventForm from "@/components/events/EventForm";
 
 export const metadata: Metadata = {
-  title: "Create Event — Chainkuns",
+  title: "Create Event",
   robots: { index: false, follow: false }, // organizer pages not indexed
 };
 

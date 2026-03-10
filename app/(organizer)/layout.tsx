@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Organizer Dashboard — Chainkuns",
+  title: "Organizer Dashboard",
   robots: { index: false, follow: false },
 };
 

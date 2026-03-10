@@ -12,11 +12,13 @@ declare module "next-auth" {
     user: {
       id: string; // Supabase user ID
       address: string; // Ethereum wallet address
+      organizerStatus: string | null;
     } & DefaultSession["user"]; // keep the default fields (name, email, image)
   }
 
   interface JWT {
     id: string; // Supabase user ID
     address: string; // Ethereum wallet address
+    organizerStatus: string | null;
   }
 }

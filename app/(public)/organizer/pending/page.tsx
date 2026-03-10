@@ -3,7 +3,7 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 
 export const metadata: Metadata = {
-  title: "Application Pending — Chainkuns",
+  title: "Application Pending",
   robots: { index: false, follow: false },
 };
 

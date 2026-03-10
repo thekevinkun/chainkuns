@@ -1,10 +1,15 @@
 import type { Event } from "@/types";
 
 // Navigation links shown in the header
-export const NAV_LINKS = [
+export const NAV_LINKS: {
+  href: string;
+  label: string;
+  requiresAuth?: boolean;
+}[] = [
   { href: "/events", label: "Browse Events" },
   { href: "/marketplace", label: "Marketplace" },
-] as const;
+  { href: "/my-tickets", label: "My Tickets", requiresAuth: true },
+];
 
 // Footer navigation groups and their respective links
 export const FOOTER_LINKS = {

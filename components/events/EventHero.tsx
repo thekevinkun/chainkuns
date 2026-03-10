@@ -1,15 +1,22 @@
-import Link from "next/link";
 import Image from "next/image";
 import Badge from "@/components/ui/Badge";
 import { VerifiedBadge } from "@/components/ui/Badge";
-import TicketPurchaseCard from "@/components/events/TicketPurchaseCard";
+import { TicketPurchaseCard } from "@/components/events";
 import type { Event } from "@/types";
 
 interface EventHeroProps {
   event: Event;
+  organizerName: string;
+  organizerLogo: string | null;
+  available: number;
 }
 
-const EventHero = ({ event }: EventHeroProps) => {
+const EventHero = ({
+  event,
+  organizerName,
+  organizerLogo,
+  available,
+}: EventHeroProps) => {
   return (
     <div className="flex flex-col gap-0">
       {/* ── Full width banner image ── */}
@@ -50,16 +57,26 @@ const EventHero = ({ event }: EventHeroProps) => {
 
             {/* Organizer */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-violet/40 to-accent-cyan/40 flex items-center justify-center text-xs font-bold text-white">
-                O
-              </div>
+              {organizerLogo ? (
+                <Image
+                  src={organizerLogo}
+                  alt={organizerName}
+                  width={48}
+                  height={48}
+                  className="rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-accent-violet/40 to-accent-cyan/40 flex items-center justify-center text-xs font-bold text-white">
+                  {organizerName.charAt(0).toUpperCase()}{" "}
+                  {/* first letter of organizer name */}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <span className="text-text-secondary text-sm">
                   Organized by
                 </span>
                 <span className="text-text-primary text-sm font-semibold">
-                  {/* TODO Phase 5: replace with real organizer name */}
-                  Chainkuns Organizer
+                  {organizerName}
                 </span>
                 <VerifiedBadge />
               </div>
@@ -109,7 +126,7 @@ const EventHero = ({ event }: EventHeroProps) => {
 
           {/* ── Right: Buy ticket card (1/3 width) ── */}
           <div className="lg:col-span-1">
-            <TicketPurchaseCard event={event} />
+            <TicketPurchaseCard event={event} available={available} />
           </div>
         </div>
       </div>

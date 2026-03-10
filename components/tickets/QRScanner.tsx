@@ -1,157 +1,303 @@
+// ============================================
+// QRScanner Component — Chainkuns
+// Used by organizers at the door to scan tickets
+// Opens the device camera, reads the QR code,
+// calls useTicket() on blockchain, then mirrors to Supabase
+// QR code encodes: { tokenId, contractAddress }
+// ============================================
 "use client";
 
-import { useState, useEffect } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import jsQR from "jsqr"; // reads QR codes from image pixel data
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { validateTicket } from "@/app/actions/ticket";
-import Button from "@/components/ui/Button";
-import Card, { CardBody } from "@/components/ui/Card";
-import { CONTRACT_ABI } from "@/lib/web3/contract";
+import { CONTRACT_ABI } from "@/lib/web3/contract"; // contract ABI
+import { validateTicket } from "@/app/actions/ticket"; // Server Action — mirrors to Supabase
 
-interface QRScannerProps {
-  contractAddress: `0x${string}`; // the deployed contract address for this event
+// Shape of data encoded in the QR code
+interface QRData {
+  tokenId: number; // NFT token ID on-chain
+  contractAddress: string; // the event's contract address
 }
 
-const QRScanner = ({ contractAddress }: QRScannerProps) => {
-  // ── Manual Input State ──
-  const [tokenId, setTokenId] = useState(""); // token ID typed by organizer
-  const [scannedToken, setScannedToken] = useState<number | null>(null); // token being validated
-  const [scanError, setScanError] = useState<string | null>(null); // error message
-  const [scanSuccess, setScanSuccess] = useState(false); // true when ticket validated
+// Possible states for the scanner UI
+type ScanState =
+  | "idle" // waiting for user to start
+  | "scanning" // camera open, looking for QR
+  | "confirming" // found QR, sending blockchain tx
+  | "success" // ticket validated
+  | "error"; // something went wrong
 
-  // ── Contract Write — useTicket() ──
+const QRScanner = () => {
+  const videoRef = useRef<HTMLVideoElement>(null); // camera video stream
+  const canvasRef = useRef<HTMLCanvasElement>(null); // hidden canvas for pixel analysis
+  const streamRef = useRef<MediaStream | null>(null); // camera stream reference for cleanup
+  const rafRef = useRef<number>(0); // requestAnimationFrame handle for cleanup
+
+  const [scanState, setScanState] = useState<ScanState>("idle");
+  const [scannedData, setScannedData] = useState<QRData | null>(null); // parsed QR data
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  // wagmi — calls useTicket() on the contract
   const { writeContract, data: txHash, isPending } = useWriteContract();
 
-  // ── Wait for transaction to confirm ──
-  const { isLoading: isConfirming, isSuccess: isTxSuccess } =
-    useWaitForTransactionReceipt({
-      hash: txHash, // watch this transaction
-    });
+  // wagmi — waits for blockchain confirmation
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({ hash: txHash });
 
-  // True while MetaMask is open or tx is confirming
-  const isLoading = isPending || isConfirming;
+  // ── Start camera ──
+  const startCamera = async () => {
+    setErrorMessage("");
+    setScanState("scanning");
 
-  // ── Handle Submit ──
-  const handleSubmit = () => {
-    setScanError(null);
-    setScanSuccess(false);
+    try {
+      // Request camera access — prefer back camera on mobile (better for scanning)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }, // environment = back camera
+      });
 
-    // Parse and validate the token ID input
-    const parsed = parseInt(tokenId);
-    if (isNaN(parsed) || parsed < 0) {
-      setScanError("Please enter a valid token ID.");
+      streamRef.current = stream; // save for cleanup
+
+      // Attach stream to the video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        scanFrame(); // start scanning frames
+      }
+    } catch (err) {
+      setScanState("error");
+      setErrorMessage("Camera access denied. Please allow camera permissions.");
+      console.error("[QRScanner] Camera error:", err);
+    }
+  };
+
+  // ── Stop camera ──
+  const stopCamera = useCallback(() => {
+    // Cancel the animation frame loop
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    // Stop all camera tracks — releases the camera
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  }, []);
+
+  // ── Scan each frame for a QR code ──
+  const scanFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Match canvas size to video dimensions
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw the current video frame onto the hidden canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Get the pixel data — jsQR needs this to find the QR code
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // Try to find a QR code in this frame
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if (code) {
+      // Found a QR code — stop scanning
+      stopCamera();
+
+      try {
+        // Parse the JSON encoded in the QR: { tokenId, contractAddress }
+        const parsed = JSON.parse(code.data) as QRData;
+
+        if (parsed.tokenId === undefined || parsed.tokenId === null || !parsed.contractAddress) {
+          throw new Error("Invalid QR code format");
+        }
+
+        setScannedData(parsed);
+        setScanState("confirming");
+        handleValidate(parsed); // trigger blockchain validation
+      } catch {
+        setScanState("error");
+        setErrorMessage("Invalid QR code. This is not a Chainkuns ticket.");
+      }
       return;
     }
 
-    setScannedToken(parsed); // store for Supabase update after tx confirms
+    // No QR found yet — check the next frame
+    rafRef.current = requestAnimationFrame(scanFrame);
+  }, [stopCamera]);
 
-    // Call useTicket() on the contract — marks ticket as used on-chain
-    writeContract({
-      address: contractAddress, // which contract to write to
-      abi: CONTRACT_ABI, // our EventTicket ABI
-      functionName: "useTicket", // marks ticket as used on-chain
-      args: [BigInt(parsed)], // token ID to mark as used
-    });
+  // ── Validate ticket on blockchain + Supabase ──
+  const handleValidate = (data: QRData) => {
+    try {
+      // Step 1 — call useTicket() on the blockchain (permanent, trustless)
+      // This marks the ticket as used on-chain — cannot be reversed
+      writeContract({
+        address: data.contractAddress as `0x${string}`, // the event's contract
+        abi: CONTRACT_ABI,
+        functionName: "useTicket", // marks ticket as used
+        args: [BigInt(data.tokenId)], // which token to mark
+      });
+    } catch (err) {
+      setScanState("error");
+      setErrorMessage(
+        err instanceof Error ? err.message : "Blockchain call failed.",
+      );
+    }
   };
 
-  // ── After contract tx confirms — update Supabase ──
+  // ── Mirror to Supabase after blockchain confirms ──
   useEffect(() => {
-    if (!isTxSuccess || scannedToken === null) return;
-
-    async function markUsedInSupabase() {
-      // Call server action to mark ticket as used in Supabase
-      const result = await validateTicket({
-        token_id: scannedToken!, // token ID we just validated
-        contract_address: contractAddress, // event contract address
+    if (isConfirmed && scannedData) {
+      // Step 2 — mirror to Supabase so TicketSalesTable shows it as used
+      validateTicket({
+        token_id: scannedData.tokenId,
+        contract_address: scannedData.contractAddress,
+      }).then((result) => {
+        if (result.success) {
+          setScanState("success");
+        } else {
+          setScanState("error");
+          setErrorMessage(
+            result.error ?? "Failed to update ticket in database.",
+          );
+        }
       });
-
-      if (result.success) {
-        setScanSuccess(true); // show success state
-        setTokenId(""); // clear input for next scan
-      } else {
-        setScanError(result.error); // show error if Supabase update failed
-      }
     }
+  }, [isConfirmed, scannedData]);
 
-    markUsedInSupabase();
-  }, [isTxSuccess, scannedToken]);
+  // ── Cleanup on unmount ──
+  useEffect(() => {
+    return () => stopCamera(); // stop camera when component unmounts
+  }, [stopCamera]);
 
+  // ── Reset to scan another ticket ──
+  const handleReset = () => {
+    setScannedData(null);
+    setErrorMessage("");
+    setScanState("idle");
+  };
+
+  // ── Render ──
   return (
-    <Card>
-      <CardBody className="space-y-5">
-        {/* ── Header ── */}
-        <div className="space-y-1">
-          <h2 className="font-semibold text-text-primary">Ticket Validation</h2>
-          <p className="text-xs text-text-secondary">
-            Enter the token ID from the ticket to validate it at the door.
+    <div className="card-surface p-6 flex flex-col gap-5">
+      <h3 className="font-display font-bold text-text-primary text-lg">
+        Scan Ticket QR Code
+      </h3>
+
+      {/* IDLE — show start button */}
+      {scanState === "idle" && (
+        <div className="flex flex-col items-center gap-4 py-6">
+          <span className="text-5xl">📷</span>
+          <p className="text-text-secondary text-sm text-center">
+            Point your camera at the attendee&apos;s ticket QR code to validate
+            entry.
           </p>
+          <button onClick={startCamera} className="btn-primary">
+            Open Camera
+          </button>
         </div>
+      )}
 
-        <div className="divider my-0" />
-
-        {/* ── Success State ── */}
-        {scanSuccess && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <span className="text-5xl">✅</span>
-            <p className="font-semibold text-text-primary">Ticket Validated!</p>
-            <p className="text-text-secondary text-sm">
-              Token #{scannedToken} has been marked as used.
-            </p>
-            {/* Reset to validate another ticket */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setScanSuccess(false);
-                setScannedToken(null);
-              }}
-            >
-              Validate Another
-            </Button>
-          </div>
-        )}
-
-        {/* ── Input + Submit ── */}
-        {!scanSuccess && (
-          <div className="space-y-4">
-            {/* Token ID input */}
-            <input
-              type="number"
-              value={tokenId}
-              onChange={(e) => setTokenId(e.target.value)}
-              placeholder="e.g. 42"
-              min={0}
-              disabled={isLoading} // disable while validating
-              className="input-base"
+      {/* SCANNING — show live camera feed */}
+      {scanState === "scanning" && (
+        <div className="flex flex-col gap-4">
+          <div className="relative rounded-xl overflow-hidden bg-bg-base aspect-video">
+            {/* Live camera video */}
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover"
+              playsInline // required on iOS to prevent fullscreen
+              muted // muted is required for autoplay
             />
-
-            {/* Submit button */}
-            <Button
-              onClick={handleSubmit}
-              isLoading={isLoading}
-              disabled={isLoading || !tokenId}
-              className="w-full"
-            >
-              {isLoading ? "Validating..." : "Validate Ticket"}
-            </Button>
+            {/* Scanning overlay — shows a targeting frame */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-48 h-48 border-2 border-accent-cyan rounded-xl opacity-70" />
+            </div>
+            {/* Scanning indicator */}
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+              <div className="bg-bg-base/80 backdrop-blur-sm px-4 py-2 rounded-full">
+                <span className="text-accent-cyan text-xs font-semibold animate-pulse">
+                  Scanning...
+                </span>
+              </div>
+            </div>
           </div>
-        )}
 
-        {/* ── Transaction Status ── */}
-        {isLoading && (
-          <p className="text-xs text-accent-cyan text-center">
+          {/* Hidden canvas — jsQR reads pixels from here */}
+          <canvas ref={canvasRef} className="hidden" />
+
+          <button
+            onClick={() => {
+              stopCamera();
+              setScanState("idle");
+            }}
+            className="btn-ghost"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* CONFIRMING — waiting for blockchain */}
+      {(scanState === "confirming" || isPending || isConfirming) && (
+        <div className="flex flex-col items-center gap-4 py-6">
+          <span className="text-5xl animate-pulse">⛓</span>
+          <p className="text-text-primary font-semibold">
             {isPending
-              ? "Please confirm in MetaMask..." // waiting for user to sign
-              : "Waiting for transaction to confirm..."}{" "}
-            // waiting for block
+              ? "Confirm in MetaMask..."
+              : "Confirming on blockchain..."}
           </p>
-        )}
+          {scannedData && (
+            <p className="mono-text text-sm text-text-secondary">
+              Token #{scannedData.tokenId}
+            </p>
+          )}
+        </div>
+      )}
 
-        {/* ── Error ── */}
-        {scanError && (
-          <p className="text-sm text-error text-center">{scanError}</p>
-        )}
-      </CardBody>
-    </Card>
+      {/* SUCCESS — ticket validated */}
+      {scanState === "success" && (
+        <div className="flex flex-col items-center gap-4 py-6">
+          <span className="text-5xl">✅</span>
+          <p className="text-text-primary font-display font-bold text-xl">
+            Ticket Valid!
+          </p>
+          {scannedData && (
+            <p className="mono-text text-sm text-text-secondary">
+              Token #{scannedData.tokenId} — marked as used
+            </p>
+          )}
+          {txHash && (
+            <Link
+              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-text-secondary text-xs hover:opacity-80 transition-opacity"
+            >
+              View transaction ↗
+            </Link>
+          )}
+          <button onClick={handleReset} className="btn-primary mt-2">
+            Scan Next Ticket
+          </button>
+        </div>
+      )}
+
+      {/* ERROR — something went wrong */}
+      {scanState === "error" && (
+        <div className="flex flex-col items-center gap-4 py-6">
+          <span className="text-5xl">❌</span>
+          <p className="text-text-primary font-semibold">Validation Failed</p>
+          <p className="text-error text-sm text-center">{errorMessage}</p>
+          <button onClick={handleReset} className="btn-primary mt-2">
+            Try Again
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 

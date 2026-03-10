@@ -3,8 +3,8 @@ import { EventCardSkeleton } from "@/components/ui/Skeleton";
 import type { Event } from "@/types";
 
 interface EventGridProps {
-  events: Event[]; // list of events to display
-  isLoading?: boolean; // show skeletons when true
+  events: (Event & { available: number })[];
+  isLoading?: boolean;
 }
 
 // How many skeleton cards to show while loading

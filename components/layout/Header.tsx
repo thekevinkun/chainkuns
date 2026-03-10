@@ -72,20 +72,22 @@ const Header = () => {
             className="hidden md:flex items-center gap-1 flex-shrink-0"
             aria-label="Main navigation"
           >
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "btn-ghost",
-                  pathname === link.href
-                    ? "text-text-primary bg-bg-elevated" // active: highlighted
-                    : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated/50", // inactive
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {NAV_LINKS.filter((link) => !link.requiresAuth || !!session).map(
+              (link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "btn-ghost",
+                    pathname === link.href
+                      ? "text-text-primary bg-bg-elevated" // active: highlighted
+                      : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated/50", // inactive
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ),
+            )}
           </nav>
 
           {/* ── Right Side: Wallet + Mobile Toggle ── */}

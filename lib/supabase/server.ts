@@ -64,3 +64,20 @@ export async function createAdminClient() {
     },
   );
 }
+
+// Service client — uses service key, no cookies, no session
+// Use this in webhooks and background jobs where there is no user session at all
+export function createServiceClient() {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!, // full access, bypasses all RLS
+    {
+      cookies: {
+        getAll() {
+          return [];
+        }, // no cookies — this is a server-to-server call
+        setAll() {}, // no-op
+      },
+    },
+  );
+}

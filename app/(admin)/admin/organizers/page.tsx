@@ -3,7 +3,7 @@ import { OrganizerApprovalCard } from "@/components/organizer";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Organizer Applications — Admin | Chainkuns",
+  title: "Organizer Applications — Admin",
   robots: { index: false, follow: false },
 };
 

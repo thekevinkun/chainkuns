@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {  
+const nextConfig: NextConfig = {
+  experimental: {
+    turbopackFileSystemCacheForDev: false, // disable disk cache — fixes WSL2 freeze
+  },
+
   // ── Image Optimization ──
   images: {
     remotePatterns: [
@@ -52,7 +56,7 @@ const nextConfig: NextConfig = {
           // Permissions policy — restrict access to sensitive browser APIs
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(self), microphone=(), geolocation=()",
           },
         ],
       },

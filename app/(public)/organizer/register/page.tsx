@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { OrganizerRegisterForm } from "@/components/organizer";
 
 export const metadata: Metadata = {
-  title: "Become an Organizer — Chainkuns",
+  title: "Become an Organizer",
   robots: { index: false, follow: false },
 };
 

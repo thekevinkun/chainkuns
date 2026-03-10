@@ -46,7 +46,7 @@ export default function WalletConnect({ className }: WalletConnectProps) {
       });
 
       // Step 3 — ask user to sign the message in MetaMask
-      const signature = await signMessageAsync({ message });
+      const signature = await signMessageRef.current({ message });
 
       // Step 4 — send message + signature to NextAuth to create session
       await signIn("credentials", {
@@ -89,7 +89,13 @@ export default function WalletConnect({ className }: WalletConnectProps) {
     hasSigned.current = true;
 
     siweSignIn();
-  }, [isConnected, address, chainId, session, status, signMessageAsync]);
+  }, [isConnected, address, chainId, session, status]);
+
+  const signMessageRef = useRef(signMessageAsync);
+
+  useEffect(() => {
+    signMessageRef.current = signMessageAsync;
+  }, [signMessageAsync]);
 
   const mounted = useRef(false);
 

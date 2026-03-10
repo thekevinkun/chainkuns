@@ -4,7 +4,7 @@ import Badge from "@/components/ui/Badge";
 import type { Event } from "@/types";
 
 interface EventCardProps {
-  event: Event;
+  event: Event & { available: number };
 }
 
 const EventCard = ({ event }: EventCardProps) => {
@@ -80,7 +80,7 @@ const EventCard = ({ event }: EventCardProps) => {
             <div className="text-right">
               <p className="text-text-secondary text-xs mb-0.5">Available</p>
               <p className="text-text-primary font-semibold text-sm">
-                {event.total_supply} tickets
+                {event.available} / {event.total_supply}
               </p>
             </div>
           </div>

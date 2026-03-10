@@ -7,7 +7,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { SiweMessage } from "siwe";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // We use JWT strategy — session stored in a cookie, not a database
@@ -43,7 +43,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const walletAddress = siwe.address;
 
           // Connect to Supabase to find or create the user
-          const supabase = await createClient();
+          const supabase = await createServiceClient();
 
           // Check if this wallet already has an account
           const { data: existingUser } = await supabase
@@ -56,7 +56,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // User already exists — return their info
             return {
               id: existingUser.id,
-              name: existingUser.wallet_address, // we use wallet as "name"
+              address: existingUser.wallet_address,
             };
           }
 
@@ -75,7 +75,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Return the new user's info
           return {
             id: newUser.id,
-            name: newUser.wallet_address,
+            address: newUser.wallet_address,
           };
         } catch (error) {
           // Something went wrong — reject login
@@ -87,24 +87,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 
   callbacks: {
-    // jwt callback — runs when JWT token is created or updated
     async jwt({ token, user }) {
       if (user) {
-        // First login — add user info to the token
-        token.id = user.id; // Supabase user ID
-        token.address = user.name; // wallet address
+        // Cast to access our custom fields
+        const u = user as { id: string; address: string };
+        token.id = u.id; // Supabase user ID
+        token.address = u.address; // wallet address
+
+        // Fetch organizer status ONCE at login — store in JWT
+        // Proxy reads this from the cookie — zero database calls on every request
+        const supabase = await createServiceClient();
+        const { data: organizer } = await supabase
+          .from("organizer_profiles")
+          .select("id, status")
+          .eq("user_id", u.id)
+          .single();
+
+        token.organizerStatus = organizer?.status ?? null;
       }
       return token;
     },
-
-    // session callback — runs when session is checked
     async session({ session, token }) {
-      if (token) {
-        // Add the wallet address and user ID to the session
-        // This is what components can access via useSession()
-        session.user.id = token.id as string;
-        session.user.address = token.address as string;
-      }
+      session.user.id = token.id as string;
+      session.user.address = token.address as string;
+      session.user.organizerStatus = token.organizerStatus as string | null;
       return session;
     },
   },

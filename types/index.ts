@@ -64,6 +64,15 @@ export interface Ticket {
   event?: Event; // joined from events when fetching user's tickets
 }
 
+export type EventWithTicketCount = Event & {
+  tickets: [{ count: number }]; // Supabase returns count as array with one object
+};
+
+// Row type returned by Supabase join
+export type TicketWithEvent = Omit<Ticket, "event"> & {
+  event: Event | null;
+};
+
 // ── LISTING (Resale Marketplace) ──
 
 // All possible states for a resale listing

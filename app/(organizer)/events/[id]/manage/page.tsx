@@ -32,8 +32,8 @@ export async function generateMetadata({
 
   return {
     title: event
-      ? `Manage ${event.title} — Chainkuns`
-      : "Manage Event — Chainkuns",
+      ? `Manage ${event.title}`
+      : "Manage Event",
     robots: { index: false, follow: false }, // organizer pages not indexed
   };
 }
@@ -108,11 +108,6 @@ export default async function ManageEventPage({
   const ticketsSold = tickets?.length ?? 0; // total tickets sold
   const ticketsUsed = tickets?.filter((t) => t.is_used).length ?? 0; // tickets used at door
   const revenue = ticketsSold * Number(event.ticket_price_eth); // total revenue in ETH
-
-  console.log("session", session);
-  console.log("user", user);
-  console.log("organizer", organizer);
-  console.log("event", event);
 
   return (
     <main className="section-container py-12 space-y-10">
@@ -261,11 +256,7 @@ export default async function ManageEventPage({
           )}
 
           {/* QR Scanner — validate tickets at door */}
-          {event.contract_address && (
-            <QRScanner
-              contractAddress={event.contract_address as `0x${string}`}
-            />
-          )}
+          {event.contract_address && <QRScanner />}
         </div>
       </div>
     </main>

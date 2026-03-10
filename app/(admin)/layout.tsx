@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 
 export const metadata: Metadata = {
-  title: "Admin — Chainkuns",
+  title: "Admin",
   robots: { index: false, follow: false }, // don't let search engines index admin pages
 };
 

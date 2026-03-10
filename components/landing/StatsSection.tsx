@@ -1,6 +1,26 @@
-import { STATS } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/server";
 
-const StatsSection = () => {
+const StatsSection = async () => {
+  // create server client
+  const supabase = await createClient();
+
+  // Run all 3 COUNT queries in parallel — faster than one by one
+  const [
+    { count: eventsCount },
+    { count: ticketsCount },
+    { count: organizersCount },
+  ] = await Promise.all([
+    supabase
+      .from("events")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active"), // active events
+    supabase.from("tickets").select("*", { count: "exact", head: true }), // all minted tickets
+    supabase
+      .from("organizer_profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "approved"), // approved organizers
+  ]);
+
   return (
     <section className="section-container py-24">
       {/* Section heading */}
@@ -15,7 +35,20 @@ const StatsSection = () => {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        {STATS.map((stat) => (
+        {[
+          { icon: "🎪", value: `${eventsCount ?? 0}+`, label: "Events Hosted" },
+          {
+            icon: "🎟",
+            value: `${ticketsCount ?? 0}+`,
+            label: "Tickets Minted",
+          },
+          {
+            icon: "🧑‍🎤",
+            value: `${organizersCount ?? 0}+`,
+            label: "Organizers",
+          },
+          { icon: "⟠", value: "430+", label: "ETH in Sales" },
+        ].map((stat) => (
           <div
             key={stat.label}
             className="card-surface p-8 flex flex-col items-center text-center gap-2"
