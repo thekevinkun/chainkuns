@@ -5,6 +5,7 @@ import TicketSalesTable from "./TicketSalesTable";
 import TicketCard from "./TicketCard";
 import TicketQR from "./TicketQR";
 import TicketDetail from "./TicketDetail";
+import ResaleModal from "./ResaleModal";
 
 export {
   MyTickets,
@@ -14,4 +15,5 @@ export {
   TicketCard,
   TicketQR,
   TicketDetail,
+  ResaleModal,
 };

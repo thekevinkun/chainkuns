@@ -97,6 +97,8 @@ export type Database = {
       };
       listings: {
         Row: {
+          buy_tx_hash: string | null;
+          cancel_tx_hash: string | null;
           created_at: string | null;
           id: string;
           list_tx_hash: string | null;
@@ -106,6 +108,8 @@ export type Database = {
           ticket_id: string | null;
         };
         Insert: {
+          buy_tx_hash?: string | null;
+          cancel_tx_hash?: string | null;
           created_at?: string | null;
           id?: string;
           list_tx_hash?: string | null;
@@ -115,6 +119,8 @@ export type Database = {
           ticket_id?: string | null;
         };
         Update: {
+          buy_tx_hash?: string | null;
+          cancel_tx_hash?: string | null;
           created_at?: string | null;
           id?: string;
           list_tx_hash?: string | null;
@@ -139,8 +145,8 @@ export type Database = {
           created_at: string | null;
           display_name: string;
           id: string;
-          status: "pending" | "approved" | "rejected";
           logo_url: string | null;
+          status: string;
           user_id: string | null;
         };
         Insert: {
@@ -148,8 +154,8 @@ export type Database = {
           created_at?: string | null;
           display_name: string;
           id?: string;
-          status?: "pending" | "approved" | "rejected";
           logo_url?: string | null;
+          status?: string;
           user_id?: string | null;
         };
         Update: {
@@ -157,8 +163,8 @@ export type Database = {
           created_at?: string | null;
           display_name?: string;
           id?: string;
-          status?: "pending" | "approved" | "rejected";
           logo_url?: string | null;
+          status?: string;
           user_id?: string | null;
         };
         Relationships: [

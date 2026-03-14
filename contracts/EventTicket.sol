@@ -46,6 +46,7 @@ contract EventTicket is
         address indexed seller,
         uint256 price
     );
+    event ListingCancelled(uint256 indexed tokenId, address indexed seller);
     event TicketSold(
         uint256 indexed tokenId,
         address indexed buyer,
@@ -106,6 +107,24 @@ contract EventTicket is
         originalSeller[tokenId] = msg.sender; // remember who is selling
 
         emit TicketListed(tokenId, msg.sender, price); // notify frontend
+    }
+
+    // CANCEL - cancel a resale listing — only the ticket owner can do this
+    // Clears all listing state so the ticket can't be bought on-chain
+    function cancelListing(uint256 tokenId) public {
+        // CHECK — must actually be listed
+        require(isListed[tokenId], "Not listed for sale");
+
+        // CHECK — only the owner can cancel their own listing
+        require(ownerOf(tokenId) == msg.sender, "Not the token owner");
+
+        // EFFECTS — clear all listing state
+        isListed[tokenId] = false;
+        listingPrice[tokenId] = 0;
+        originalSeller[tokenId] = address(0);
+
+        // notify the frontend the listing was cancelled
+        emit ListingCancelled(tokenId, msg.sender);
     }
 
     // BUY — buyer pays, ETH splits between seller and organizer

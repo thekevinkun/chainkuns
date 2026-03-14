@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { OrganizerDashboard } from "@/components/organizer";
 
-import Button from "@/components/ui/Button";
-import { AnalyticsCard, EventTable } from "@/components/organizer";
-
+import { Event } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -35,7 +33,7 @@ export default async function OrganizerDashboardPage() {
   // Get their events
   const { data: events } = await supabase
     .from("events")
-    .select("id, title, status, ticket_price_eth, total_supply, created_at")
+    .select("*")
     .eq("organizer_id", profile.id)
     .order("created_at", { ascending: false });
 
@@ -50,42 +48,62 @@ export default async function OrganizerDashboardPage() {
           .in("event_id", eventIds)
       : { data: [] };
 
+  // Get sold resale listings for this organizer's events
+  // Used to calculate royalty revenue
+  const { data: soldListings } =
+    eventIds.length > 0
+      ? await supabase
+          .from("listings")
+          .select(
+            `
+            price_eth,
+            ticket:tickets!inner (
+              event:events!inner (
+                id,
+                royalty_percent
+              )
+            )
+          `,
+          )
+          .eq("status", "sold") // only completed sales
+          .in("ticket.event_id", eventIds) // only for this organizer's events
+      : { data: [] };
+
   // Calculate stats
   const totalEvents = events?.length ?? 0;
   const totalTicketsSold = tickets?.length ?? 0;
-  const totalRevenue =
-    events?.reduce((sum, e) => {
-      const sold = tickets?.filter((t) => t.event_id === e.id).length ?? 0;
-      return sum + sold * e.ticket_price_eth;
+
+  // Mint revenue — tickets sold × ticket price per event
+  const mintRevenue =
+    events?.reduce((sum, event) => {
+      const sold = tickets?.filter((t) => t.event_id === event.id).length ?? 0;
+      return sum + sold * Number(event.ticket_price_eth);
     }, 0) ?? 0;
 
+  // Royalty revenue — organizer earns royalty_percent % on every resale
+  const royaltyRevenue =
+    soldListings?.reduce((sum, listing) => {
+      const royaltyPercent =
+        Number(
+          (
+            listing.ticket as unknown as {
+              event: { royalty_percent: number };
+            }
+          )?.event?.royalty_percent,
+        ) ?? 0;
+      return sum + Number(listing.price_eth) * (royaltyPercent / 100);
+    }, 0) ?? 0;
+
+  // Total = mint revenue + royalty revenue from resales
+  const totalRevenue = mintRevenue + royaltyRevenue;
+
   return (
-    <main className="section-container mx-auto py-12 space-y-10">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold">
-            Welcome, {profile.display_name}
-          </h1>
-          <p className="text-muted-foreground">Here's your overview.</p>
-        </div>
-        <Link href="/events/create">
-          <Button>Create Event</Button>
-        </Link>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <AnalyticsCard label="Total Events" value={totalEvents} />
-        <AnalyticsCard label="Tickets Sold" value={totalTicketsSold} />
-        <AnalyticsCard label="Total Revenue" value={totalRevenue} unit="ETH" />
-      </div>
-
-      {/* Events Table */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Your Events</h2>
-        <EventTable events={events ?? []} />
-      </div>
-    </main>
+    <OrganizerDashboard
+      events={(events ?? []) as Event[]}
+      organizerName={profile.display_name}
+      totalEvents={totalEvents}
+      totalRevenue={totalRevenue}
+      totalTicketsSold={totalTicketsSold}
+    />
   );
 }

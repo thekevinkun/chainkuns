@@ -35,7 +35,7 @@ export async function createEvent(
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
-
+  console.log("total_supply from Zod:", parsed.data.total_supply);
   const supabase = await createClient();
 
   // 4. GET user from Supabase using wallet address from session

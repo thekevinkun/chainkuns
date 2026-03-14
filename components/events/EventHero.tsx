@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Image from "next/image";
 import Badge from "@/components/ui/Badge";
 import { VerifiedBadge } from "@/components/ui/Badge";
@@ -122,6 +123,28 @@ const EventHero = ({
                 {event.description ?? "No description provided."}
               </p>
             </div>
+
+            {/* Resale marketplace link — takes user to peer-to-peer listings for this event */}
+            <Link
+              href={`/events/${event.id}/resale`}
+              className="flex items-center justify-between card-surface px-4 py-3 rounded-xl 
+                  hover:border-accent-cyan/30 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🔄</span>
+                <div>
+                  <p className="text-text-primary text-sm font-semibold">
+                    Resale Tickets
+                  </p>
+                  <p className="text-text-secondary text-xs">
+                    Buy peer-to-peer from other fans
+                  </p>
+                </div>
+              </div>
+              <span className="text-accent-cyan group-hover:translate-x-1 transition-transform">
+                →
+              </span>
+            </Link>
           </div>
 
           {/* ── Right: Buy ticket card (1/3 width) ── */}

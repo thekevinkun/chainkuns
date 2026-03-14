@@ -3,7 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 
 // load environment variables from .env.local
 import * as dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });
+dotenv.config({ path: "../.env.local" });
 
 const config: HardhatUserConfig = {
   solidity: {

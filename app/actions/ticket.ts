@@ -109,19 +109,9 @@ export async function recordMint({
     return { success: false, error: "Not authenticated" };
   }
 
-  // 2. Rate limit — 3 mints per hour per wallet
-  try {
-    await checkRateLimit(mintRateLimiter, session.user.address.toLowerCase());
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Rate limit exceeded.",
-    };
-  }
-
   const supabase = await createClient();
 
-  // 3. Idempotency check
+  // 2. Idempotency check
   const { data: existing } = await supabase
     .from("tickets")
     .select("id")
@@ -132,7 +122,7 @@ export async function recordMint({
     return { success: true };
   }
 
-  // 4. Insert — owner_wallet comes from session, not from client
+  // 3. Insert — owner_wallet comes from session, not from client
   const { error } = await supabase.from("tickets").insert({
     event_id: eventId,
     token_id: tokenId,
@@ -148,4 +138,25 @@ export async function recordMint({
   }
 
   return { success: true };
+}
+
+// Pre-check rate limit before minting — call this BEFORE MetaMask popup
+export async function checkMintRateLimit(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const session = await auth();
+  if (!session?.user?.address) {
+    return { success: false, error: "Not authenticated." };
+  }
+
+  try {
+    await checkRateLimit(mintRateLimiter, session.user.address.toLowerCase());
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Rate limit exceeded.",
+    };
+  }
 }

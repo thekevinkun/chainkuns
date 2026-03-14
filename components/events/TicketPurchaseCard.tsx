@@ -26,7 +26,7 @@ import {
 import { decodeEventLog } from "viem"; // decodes blockchain event logs
 import { parseEther } from "viem"; // converts ETH string to wei bigint
 import { useSession } from "next-auth/react"; // NextAuth session
-import { recordMint } from "@/app/actions/ticket"; // Server Action to save to Supabase
+import { recordMint, checkMintRateLimit } from "@/app/actions/ticket"; // Server Action to save to Supabase
 import { uploadTicketMetadata } from "@/app/actions/ipfs"; // Server Action to upload metadata to IPFS and get URI back
 
 import Button from "@/components/ui/Button";
@@ -94,6 +94,13 @@ const TicketPurchaseCard = ({ event, available }: TicketPurchaseCardProps) => {
     if (!event.contract_address) {
       setTxError("This event has no deployed contract yet.");
       return;
+    }
+
+    // ── PRE-CHECK rate limit BEFORE any expensive operations ──
+    const rateLimitCheck = await checkMintRateLimit();
+    if (!rateLimitCheck.success) {
+      setTxError(rateLimitCheck.error ?? "Rate limit exceeded.");
+      return; // stop here — nothing has happened yet
     }
 
     // Store idempotency key for later use in handleConfirmed

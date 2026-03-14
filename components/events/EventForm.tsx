@@ -11,7 +11,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePublicClient, useWalletClient } from "wagmi";
-import { decodeEventLog, parseEther } from "viem";
+import { parseEther } from "viem";
 import { createEvent, updateEventContract } from "@/app/actions/event";
 import { generateEventDescription } from "@/app/actions/ai";
 import Button from "@/components/ui/Button";
@@ -130,15 +130,18 @@ const EventForm = () => {
         }
       }
 
+      console.log("total_supply raw:", formData.total_supply);
+      console.log("total_supply parsed:", parseInt(formData.total_supply));
+
       // ── STEP 2: Save event to Supabase via Server Action ──
       setSubmitStep("Saving event details...");
       const eventResult = await createEvent({
         ...formData,
         banner_image_url,
         // convert empty strings to proper numbers for Zod validation
-        total_supply: Number(formData.total_supply),
-        ticket_price_eth: Number(formData.ticket_price_eth),
-        royalty_percent: Number(formData.royalty_percent),
+        ticket_price_eth: parseFloat(formData.ticket_price_eth),
+        total_supply: parseInt(formData.total_supply),
+        royalty_percent: parseFloat(formData.royalty_percent),
         event_date: new Date(formData.event_date).toISOString(), // convert to ISO string for Zod validation
       });
 
@@ -311,11 +314,11 @@ const EventForm = () => {
             <Input
               label="Total Tickets"
               type="number"
-              value={formData.total_supply}
+              value={formData.total_supply ?? ""}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  total_supply: e.target.valueAsNumber,
+                  total_supply: e.target.value, // just store the string as-is
                 })
               }
               placeholder="e.g. 500"
@@ -330,11 +333,11 @@ const EventForm = () => {
             <Input
               label="Ticket Price (ETH)"
               type="number"
-              value={formData.ticket_price_eth}
+              value={formData.ticket_price_eth ?? ""}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  ticket_price_eth: e.target.valueAsNumber,
+                  ticket_price_eth: e.target.value, // just store the string as-is
                 })
               }
               placeholder="e.g. 0.05"
@@ -349,11 +352,11 @@ const EventForm = () => {
             <Input
               label="Resale Royalty (%)"
               type="number"
-              value={formData.royalty_percent}
+              value={formData.royalty_percent ?? ""}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  royalty_percent: e.target.valueAsNumber,
+                  royalty_percent: e.target.value, // just store the string as-is
                 })
               }
               placeholder="e.g. 5"

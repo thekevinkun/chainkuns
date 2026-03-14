@@ -80,15 +80,17 @@ export type ListingStatus = "active" | "sold" | "cancelled";
 
 // A ticket listed for peer-to-peer resale
 export interface Listing {
-  id: string; // UUID
-  ticket_id: string; // which ticket is being sold
-  seller_wallet: string; // seller's ETH address
-  price_eth: number; // asking price in ETH
-  status: ListingStatus; // is it still available?
-  list_tx_hash: string | null; // tx hash when listing was created on-chain
+  id: string;
+  ticket_id: string;
+  seller_wallet: string;
+  price_eth: number;
+  status: ListingStatus;
+  list_tx_hash: string | null;
   created_at: string;
-  ticket?: Ticket; // joined ticket data
-  event?: Event; // joined event data
+  ticket?: Ticket & {
+    event?: Event; // event is nested inside ticket — matches Supabase join shape
+  };
+  event?: Event; // keep this for direct joins (e.g. getPriceHistory future use)
 }
 
 // ── WEB3 / WALLET ──
@@ -138,8 +140,8 @@ export interface EventFormState {
   description: string; // event description (can be AI generated)
   venue: string; // event location
   event_date: string; // ISO datetime string
-  total_supply: number | ""; // max tickets available
-  ticket_price_eth: number | ""; // price per ticket in ETH
-  royalty_percent: number | ""; // % organizer gets on resale (max 10%)
+  total_supply: string; // max tickets available
+  ticket_price_eth: string; // price per ticket in ETH
+  royalty_percent: string; // % organizer gets on resale (max 10%)
   banner_image_url: string | null; // Supabase Storage URL after upload
 }

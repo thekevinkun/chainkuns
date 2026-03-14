@@ -1,7 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import Badge from "@/components/ui/Badge";
-import { TicketQR } from "@/components/tickets";
+import { getPriceHistory } from "@/app/actions/listing"; // fetch sold listings
+
+import { PriceHistory } from "@/components/marketplace";
+import TicketQR from "@/components/tickets/TicketQR";
+
 import type { Event, TicketWithEvent } from "@/types";
 import { getTxUrl, formatEventDate, ipfsToHttp } from "@/lib/utils/format";
 
@@ -10,12 +14,16 @@ interface TicketDetailProps {
   event: Event | null;
 }
 
-const TicketDetail = ({ typed, event }: TicketDetailProps) => {
+const TicketDetail = async ({ typed, event }: TicketDetailProps) => {
   // Data to encode in the QR code — scanned at the door by organizer
   const qrData = JSON.stringify({
     tokenId: typed.token_id,
     contractAddress: event?.contract_address ?? "",
   });
+
+  // fetch price history for this ticket — sold listings only
+  const priceHistoryResult = await getPriceHistory(typed.id);
+  const priceHistory = priceHistoryResult.data ?? [];
 
   return (
     <main className="section-container py-12">
@@ -119,12 +127,7 @@ const TicketDetail = ({ typed, event }: TicketDetailProps) => {
               Scan at Door
             </p>
             <div className="bg-white p-4 rounded-2xl">
-              {/* QR encodes { tokenId, contractAddress } — organizer scans this */}
-              <TicketQR
-                value={qrData}
-                size={180}
-                level="H" // high error correction — readable even if damaged
-              />
+              <TicketQR value={qrData} size={180} level="H" />
             </div>
             <p className="text-text-secondary text-xs text-center max-w-sm">
               Show this QR code at the entrance. Do not share with others.
@@ -145,6 +148,9 @@ const TicketDetail = ({ typed, event }: TicketDetailProps) => {
             </Link>
           )}
         </div>
+
+        {/* Price history — shows all past resales for this ticket */}
+        <PriceHistory history={priceHistory} />
       </div>
     </main>
   );

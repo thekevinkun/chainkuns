@@ -21,7 +21,7 @@ const SAMPLE_URI = "ipfs://QmSampleHash123"; // fake IPFS URI for testing
 // DEPLOY HELPER — reused in every test
 async function deployContract() {
   // get test wallets — hardhat gives us fake funded wallets
-  const [organizer, buyer, secondBuyer] = await ethers.getSigners();
+  const [organizer, buyer, secondBuyer, stranger] = await ethers.getSigners();
 
   // get the contract factory — blueprint for deploying
   const EventTicketFactory = await ethers.getContractFactory("EventTicket");
@@ -39,7 +39,7 @@ async function deployContract() {
   // wait for deployment to finish
   await contract.waitForDeployment();
 
-  return { contract, organizer, buyer, secondBuyer };
+  return { contract, organizer, buyer, secondBuyer, stranger };
 }
 
 // TESTS
@@ -49,8 +49,8 @@ describe("EventTicket", function () {
     it("should deploy with the correct name and symbol", async function () {
       const { contract } = await deployContract();
 
-      const name = await contract.name(); // read name from contract
-      const symbol = await contract.symbol(); // read symbol from contract
+      const name = await contract.name();
+      const symbol = await contract.symbol();
 
       expect(name).to.equal(EVENT_NAME);
       expect(symbol).to.equal(EVENT_SYMBOL);
@@ -100,14 +100,10 @@ describe("EventTicket", function () {
     it("should mint a ticket to the buyer", async function () {
       const { contract, buyer } = await deployContract();
 
-      // buyer mints a ticket by sending exactly the ticket price
-      await contract.connect(buyer).mintTicket(
-        buyer.address,
-        SAMPLE_URI,
-        { value: TICKET_PRICE }, // attach ETH payment
-      );
+      await contract
+        .connect(buyer)
+        .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      // token 0 should now be owned by the buyer
       const owner = await contract.ownerOf(0n);
       expect(owner).to.equal(buyer.address);
     });
@@ -119,20 +115,19 @@ describe("EventTicket", function () {
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      const uri = await contract.tokenURI(0n); // read URI of token 0
+      const uri = await contract.tokenURI(0n);
       expect(uri).to.equal(SAMPLE_URI);
     });
 
     it("should fail if not enough ETH is sent", async function () {
       const { contract, buyer } = await deployContract();
 
-      // send less than ticket price — should revert
       await expect(
-        contract.connect(buyer).mintTicket(
-          buyer.address,
-          SAMPLE_URI,
-          { value: ethers.parseEther("0.01") }, // too little
-        ),
+        contract
+          .connect(buyer)
+          .mintTicket(buyer.address, SAMPLE_URI, {
+            value: ethers.parseEther("0.01"),
+          }),
       ).to.be.revertedWith("Not enough ETH sent");
     });
 
@@ -140,7 +135,6 @@ describe("EventTicket", function () {
       const [organizer, buyer] = await ethers.getSigners();
       const EventTicketFactory = await ethers.getContractFactory("EventTicket");
 
-      // deploy a contract with only 1 ticket allowed
       const contract = await EventTicketFactory.deploy(
         EVENT_NAME,
         EVENT_SYMBOL,
@@ -152,12 +146,10 @@ describe("EventTicket", function () {
 
       await contract.waitForDeployment();
 
-      // mint the only ticket
       await contract
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      // second mint should fail — sold out
       await expect(
         contract
           .connect(buyer)
@@ -171,19 +163,17 @@ describe("EventTicket", function () {
     it("should allow owner to list their ticket", async function () {
       const { contract, buyer } = await deployContract();
 
-      // mint first
       await contract
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      const resalePrice = ethers.parseEther("0.1"); // list at 0.1 ETH
+      const resalePrice = ethers.parseEther("0.1");
 
-      // buyer lists their ticket
       await contract.connect(buyer).listTicket(0n, resalePrice);
 
-      const listed = await contract.isListed(0n); // should be true
-      const price = await contract.listingPrice(0n); // should be resalePrice
-      const seller = await contract.originalSeller(0n); // should be buyer
+      const listed = await contract.isListed(0n);
+      const price = await contract.listingPrice(0n);
+      const seller = await contract.originalSeller(0n);
 
       expect(listed).to.equal(true);
       expect(price).to.equal(resalePrice);
@@ -193,35 +183,94 @@ describe("EventTicket", function () {
     it("should not allow non-owner to list a ticket", async function () {
       const { contract, buyer, secondBuyer } = await deployContract();
 
-      // buyer mints
       await contract
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      // secondBuyer tries to list buyer's ticket — should fail
       await expect(
         contract.connect(secondBuyer).listTicket(0n, ethers.parseEther("0.1")),
       ).to.be.revertedWith("You don't own this ticket");
     });
   });
 
-  // TEST 4 — Buying Listed Ticket
+  // TEST 4 — Cancelling a Listing
+  describe("Cancelling a Listing", function () {
+    it("should allow owner to cancel their listing", async function () {
+      const { contract, buyer } = await deployContract();
+
+      // mint and list first
+      await contract
+        .connect(buyer)
+        .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
+      await contract.connect(buyer).listTicket(0n, ethers.parseEther("0.1"));
+
+      // confirm it's listed
+      expect(await contract.isListed(0n)).to.equal(true);
+
+      // cancel the listing
+      await contract.connect(buyer).cancelListing(0n);
+
+      // all listing state should be cleared
+      expect(await contract.isListed(0n)).to.equal(false);
+      expect(await contract.listingPrice(0n)).to.equal(0n);
+    });
+
+    it("should not allow non-owner to cancel a listing", async function () {
+      const { contract, buyer, stranger } = await deployContract();
+
+      await contract
+        .connect(buyer)
+        .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
+      await contract.connect(buyer).listTicket(0n, ethers.parseEther("0.1"));
+
+      // stranger tries to cancel — should fail
+      await expect(
+        contract.connect(stranger).cancelListing(0n),
+      ).to.be.revertedWith("Not the token owner");
+    });
+
+    it("should not allow cancelling a ticket that is not listed", async function () {
+      const { contract, buyer } = await deployContract();
+
+      // mint but do NOT list
+      await contract
+        .connect(buyer)
+        .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
+
+      // cancelling an unlisted ticket should fail
+      await expect(
+        contract.connect(buyer).cancelListing(0n),
+      ).to.be.revertedWith("Not listed for sale");
+    });
+
+    it("should emit ListingCancelled event", async function () {
+      const { contract, buyer } = await deployContract();
+
+      await contract
+        .connect(buyer)
+        .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
+      await contract.connect(buyer).listTicket(0n, ethers.parseEther("0.1"));
+
+      // cancel should emit the event with correct args
+      await expect(contract.connect(buyer).cancelListing(0n))
+        .to.emit(contract, "ListingCancelled")
+        .withArgs(0n, buyer.address);
+    });
+  });
+
+  // TEST 5 — Buying Listed Ticket
   describe("Buying a Listed Ticket", function () {
     it("should transfer NFT to buyer and split ETH correctly", async function () {
       const { contract, organizer, buyer, secondBuyer } =
         await deployContract();
 
-      // buyer mints original ticket
       await contract
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      const resalePrice = ethers.parseEther("0.1"); // 0.1 ETH resale price
-
-      // buyer lists the ticket
+      const resalePrice = ethers.parseEther("0.1");
       await contract.connect(buyer).listTicket(0n, resalePrice);
 
-      // record balances before the sale
       const buyerBalanceBefore = await ethers.provider.getBalance(
         buyer.address,
       );
@@ -229,14 +278,11 @@ describe("EventTicket", function () {
         organizer.address,
       );
 
-      // secondBuyer purchases the listed ticket
       await contract.connect(secondBuyer).buyTicket(0n, { value: resalePrice });
 
-      // NFT should now belong to secondBuyer
       const newOwner = await contract.ownerOf(0n);
       expect(newOwner).to.equal(secondBuyer.address);
 
-      // organizer should have received royalty (5% of 0.1 ETH = 0.005 ETH)
       const organizerBalanceAfter = await ethers.provider.getBalance(
         organizer.address,
       );
@@ -245,7 +291,6 @@ describe("EventTicket", function () {
         expectedRoyalty,
       );
 
-      // buyer (seller) should have received 95% of resale price
       const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
       const expectedSellerAmount = resalePrice - expectedRoyalty;
       expect(buyerBalanceAfter - buyerBalanceBefore).to.equal(
@@ -259,10 +304,8 @@ describe("EventTicket", function () {
       await contract
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
-
       await contract.connect(buyer).listTicket(0n, ethers.parseEther("0.1"));
 
-      // send less than listing price — should revert
       await expect(
         contract
           .connect(secondBuyer)
@@ -271,7 +314,7 @@ describe("EventTicket", function () {
     });
   });
 
-  // TEST 5 — Sell Back
+  // TEST 6 — Sell Back
   describe("Sell Back", function () {
     it("should return 50% refund and transfer NFT back to organizer", async function () {
       const { contract, organizer, buyer } = await deployContract();
@@ -279,10 +322,9 @@ describe("EventTicket", function () {
       // fund the contract so it can pay refunds
       await organizer.sendTransaction({
         to: await contract.getAddress(),
-        value: ethers.parseEther("1"), // send 1 ETH to contract
+        value: ethers.parseEther("1"),
       });
 
-      // buyer mints a ticket
       await contract
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
@@ -291,37 +333,31 @@ describe("EventTicket", function () {
         buyer.address,
       );
 
-      // buyer sells the ticket back
       const tx = await contract.connect(buyer).sellBack(0n);
-      const receipt = await tx.wait(); // wait for transaction to complete
+      const receipt = await tx.wait();
 
-      // calculate gas cost so we can account for it
       const gasUsed = receipt!.gasUsed * receipt!.gasPrice;
 
-      // NFT should be back with organizer
       const newOwner = await contract.ownerOf(0n);
       expect(newOwner).to.equal(organizer.address);
 
-      // buyer should have received 50% of ticket price back (minus gas)
       const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
-      const expectedRefund = TICKET_PRICE / 2n; // 50%
+      const expectedRefund = TICKET_PRICE / 2n;
       expect(buyerBalanceAfter).to.equal(
         buyerBalanceBefore + expectedRefund - gasUsed,
       );
     });
   });
 
-  // TEST 6 — Use Ticket at Door
+  // TEST 7 — Use Ticket at Door
   describe("Using a Ticket", function () {
     it("should mark ticket as used", async function () {
       const { contract, organizer, buyer } = await deployContract();
 
-      // buyer mints
       await contract
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      // organizer (event staff) marks it as used
       await contract.connect(organizer).useTicket(0n);
 
       const used = await contract.isUsed(0n);
@@ -335,10 +371,8 @@ describe("EventTicket", function () {
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      // first scan — ok
       await contract.connect(organizer).useTicket(0n);
 
-      // second scan — should fail
       await expect(
         contract.connect(organizer).useTicket(0n),
       ).to.be.revertedWith("Ticket already used");
@@ -351,22 +385,19 @@ describe("EventTicket", function () {
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });
 
-      // buyer tries to mark their own ticket as used — only organizer can do this
       await expect(
         contract.connect(buyer).useTicket(0n),
       ).revertedWithCustomError(contract, "OwnableUnauthorizedAccount");
     });
   });
 
-  // TEST 7 — Pause / Unpause
+  // TEST 8 — Pause / Unpause
   describe("Pause and Unpause", function () {
     it("should prevent minting when paused", async function () {
       const { contract, organizer, buyer } = await deployContract();
 
-      // organizer pauses the contract
       await contract.connect(organizer).pause();
 
-      // minting should now fail
       await expect(
         contract
           .connect(buyer)
@@ -377,11 +408,9 @@ describe("EventTicket", function () {
     it("should allow minting again after unpause", async function () {
       const { contract, organizer, buyer } = await deployContract();
 
-      // pause then unpause
       await contract.connect(organizer).pause();
       await contract.connect(organizer).unpause();
 
-      // minting should work again
       await contract
         .connect(buyer)
         .mintTicket(buyer.address, SAMPLE_URI, { value: TICKET_PRICE });

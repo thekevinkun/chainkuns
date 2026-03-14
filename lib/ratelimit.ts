@@ -20,7 +20,7 @@ const redis = new Redis({
 // Prevents one person from buying all tickets instantly
 export const mintRateLimiter = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(3, "1 h"), // 3 attempts per 1 hour window
+  limiter: Ratelimit.fixedWindow(3, "1 h"), // 3 attempts per 1 hour window
   prefix: "chainkuns:mint", // Redis key prefix to separate from other limiters
   analytics: true, // track usage in Upstash dashboard
 });
@@ -29,7 +29,7 @@ export const mintRateLimiter = new Ratelimit({
 // Prevents organizers from spamming fake events
 export const createEventRateLimiter = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(3, "1 d"), // 3 events per day
+  limiter: Ratelimit.fixedWindow(3, "1 d"), // 3 events per day
   prefix: "chainkuns:create-event",
   analytics: true,
 });
@@ -38,7 +38,7 @@ export const createEventRateLimiter = new Ratelimit({
 // Each OpenAI call costs money so we keep this tight
 export const aiGenerateRateLimiter = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(5, "1 h"), // 5 generations per hour
+  limiter: Ratelimit.fixedWindow(5, "1 h"), // 5 generations per hour
   prefix: "chainkuns:ai-generate",
   analytics: true,
 });
@@ -47,8 +47,26 @@ export const aiGenerateRateLimiter = new Ratelimit({
 // Catch-all for all other routes
 export const generalRateLimiter = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(100, "1 m"), // 100 requests per minute
+  limiter: Ratelimit.fixedWindow(100, "1 m"), // 100 requests per minute
   prefix: "chainkuns:general",
+  analytics: true,
+});
+
+// Create listing — 10 per hour per wallet
+// Prevents spam listings flooding the marketplace
+export const listingRateLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.fixedWindow(10, "1 h"), // 10 listings per hour
+  prefix: "chainkuns:listing", // separate Redis key namespace
+  analytics: true,
+});
+
+// Buy listing — 5 per hour per wallet
+// Prevents someone from hammering the buy action repeatedly
+export const buyListingRateLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.fixedWindow(5, "1 h"), // 5 buys per hour
+  prefix: "chainkuns:buy-listing",
   analytics: true,
 });
 

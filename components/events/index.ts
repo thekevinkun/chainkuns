@@ -4,6 +4,7 @@ import EventGrid from "./EventGrid";
 import EventFilters from "./EventFilters";
 import EventForm from "./EventForm";
 import EventHero from "./EventHero";
+import EventResale from "./EventResale";
 import TicketPurchaseCard from "./TicketPurchaseCard";
 
 export {
@@ -13,5 +14,6 @@ export {
   EventFilters,
   EventForm,
   EventHero,
+  EventResale,
   TicketPurchaseCard,
 };
