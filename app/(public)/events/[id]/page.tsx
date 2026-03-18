@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+
 import { EventHero } from "@/components/events";
 
 import type { Event } from "@/types";

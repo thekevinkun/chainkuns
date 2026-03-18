@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { registerOrganizer } from "@/app/actions/organizer";
+
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import Button from "@/components/ui/Button";
@@ -160,6 +161,7 @@ const OrganizerRegisterForm = () => {
                 alt="Logo preview"
                 width={80}
                 height={80}
+                sizes="80px"
                 className="rounded-lg object-cover"
               />
             )}

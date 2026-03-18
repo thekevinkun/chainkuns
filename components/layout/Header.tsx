@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 import { WalletConnect } from "@/components/web3";
 
 import { cn } from "@/lib/utils/cn";

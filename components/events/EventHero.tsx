@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
+
 import Badge from "@/components/ui/Badge";
 import { VerifiedBadge } from "@/components/ui/Badge";
 import { TicketPurchaseCard } from "@/components/events";
+
 import type { Event } from "@/types";
 
 interface EventHeroProps {
@@ -28,6 +30,7 @@ const EventHero = ({
             alt={event.title}
             fill
             priority // above the fold — load immediately
+            sizes="100vw"
             className="object-cover"
           />
         ) : (
@@ -64,6 +67,7 @@ const EventHero = ({
                   alt={organizerName}
                   width={48}
                   height={48}
+                  sizes="48px"
                   className="rounded-full object-cover"
                 />
               ) : (

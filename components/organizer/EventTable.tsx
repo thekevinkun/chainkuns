@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
-import { Event } from "@/types/organizer";
+import type { Event } from "@/types/organizer";
 
 const EventTable = ({ events }: { events: Event[] }) => {
   if (events.length === 0) {

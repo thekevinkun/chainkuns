@@ -1,14 +1,10 @@
-// ============================================
-// Shareable Ticket Page — Chainkuns
-// Public page — anyone with the URL can view it
-// Shows ticket details, owner wallet, QR code
-// URL: /tickets/[tokenId]
-// ============================================
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import type { Event, TicketWithEvent } from "@/types";
+
 import { TicketDetail } from "@/components/tickets";
+
+import type { Event, TicketWithEvent } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 
 // ── Dynamic OG metadata ──

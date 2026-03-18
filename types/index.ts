@@ -68,6 +68,10 @@ export type EventWithTicketCount = Event & {
   tickets: [{ count: number }]; // Supabase returns count as array with one object
 };
 
+export interface EventWithAvailable extends Event {
+  available: number;
+}
+
 // Row type returned by Supabase join
 export type TicketWithEvent = Omit<Ticket, "event"> & {
   event: Event | null;

@@ -11,8 +11,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+
 import Badge from "@/components/ui/Badge";
 import { ResaleModal } from "@/components/tickets";
+
 import type { Ticket } from "@/types";
 import { getTxUrl, formatDateShort, ipfsToHttp } from "@/lib/utils/format";
 
@@ -39,6 +41,7 @@ const TicketCard = ({ ticket }: TicketCardProps) => {
               src={ipfsToHttp(event.banner_image_url)}
               alt={event?.title ?? "Event"}
               fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover"
             />
           ) : (

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+
 import { MyTickets } from "@/components/tickets";
+
 import type { TicketWithEvent } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 

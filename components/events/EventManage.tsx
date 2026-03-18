@@ -54,6 +54,7 @@ const EventManage = ({ event, tickets }: EventManageProps) => {
             alt={event.title}
             fill
             priority // above the fold — load immediately
+            sizes="100vw"
             className="object-cover"
           />
         ) : (

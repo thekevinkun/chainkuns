@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { approveOrganizer, rejectOrganizer } from "@/app/actions/organizer";
+
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card, { CardBody } from "@/components/ui/Card";
 import { WalletAddress } from "@/components/web3";
 
-import { Application } from "@/types/organizer";
+import type { Application } from "@/types/organizer";
 
 const OrganizerApprovalCard = ({
   application,
@@ -51,6 +52,7 @@ const OrganizerApprovalCard = ({
                 alt={application.display_name}
                 width={90}
                 height={90}
+                sizes="90px"
                 className="rounded-xl object-cover flex-shrink-0"
               />
             ) : (
@@ -75,12 +77,15 @@ const OrganizerApprovalCard = ({
               {application.created_at && (
                 <p className="text-xs text-text-secondary">
                   Applied in{" "}
-                  {new Date(application.created_at).toLocaleDateString("en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {new Date(application.created_at).toLocaleDateString(
+                    "en-US",
+                    {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )}
                 </p>
               )}
             </div>

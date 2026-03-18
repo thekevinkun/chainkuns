@@ -1,5 +1,5 @@
 import Card from "@/components/ui/Card";
-import { AnalyticsCardProps } from "@/types/organizer";
+import type { AnalyticsCardProps } from "@/types/organizer";
 import { cn } from "@/lib/utils/cn";
 
 const AnalyticsCard = ({

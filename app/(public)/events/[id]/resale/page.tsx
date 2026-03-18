@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+
 import { EventResale } from "@/components/events";
+
 import type { Event } from "@/types";
 import { createServiceClient } from "@/lib/supabase/server";
-
-interface PageProps {
-  params: { id: string };
-}
 
 // generateMetadata
 // Dynamic SEO metadata per event

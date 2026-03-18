@@ -1,3 +1,4 @@
+import BrowseEvents from "./BrowseEvents";
 import EventManage from "./EventManage";
 import EventCard from "./EventCard";
 import EventGrid from "./EventGrid";
@@ -8,6 +9,7 @@ import EventResale from "./EventResale";
 import TicketPurchaseCard from "./TicketPurchaseCard";
 
 export {
+  BrowseEvents,
   EventManage,
   EventCard,
   EventGrid,

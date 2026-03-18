@@ -75,11 +75,14 @@ const TicketSalesTable = ({ tickets }: TicketSalesTableProps) => {
 
                   {/* Mint Date */}
                   <td className="px-6 py-4 text-text-secondary">
-                    {new Date(ticket.created_at).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {new Date(ticket.created_at ?? "").toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      },
+                    )}
                   </td>
 
                   {/* Used Status */}

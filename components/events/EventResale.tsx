@@ -45,6 +45,7 @@ const EventResale = ({ typedEvent, eventId }: EventResaleProps) => {
                   src={typedEvent.banner_image_url}
                   alt={typedEvent.title}
                   fill
+                  sizes="96px"
                   className="object-cover"
                 />
               </div>
@@ -52,7 +53,7 @@ const EventResale = ({ typedEvent, eventId }: EventResaleProps) => {
 
             <div className="flex flex-col gap-3 flex-1">
               {/* Breadcrumb */}
-              <div className="flex items-center gap-2 text-xs text-text-secondary">
+              {/* <div className="flex items-center gap-2 text-xs text-text-secondary">
                 <Link
                   href="/marketplace"
                   className="hover:text-text-primary transition-colors"
@@ -68,7 +69,7 @@ const EventResale = ({ typedEvent, eventId }: EventResaleProps) => {
                 </Link>
                 <span>→</span>
                 <span className="text-text-primary">Resale</span>
-              </div>
+              </div> */}
 
               {/* Badge */}
               <span className="text-xs font-semibold uppercase tracking-widest text-accent-cyan w-fit">

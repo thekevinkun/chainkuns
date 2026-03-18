@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 
-import { OrganizerActionResult } from "@/types/organizer";
+import type { OrganizerActionResult } from "@/types/organizer";
 import { createClient } from "@/lib/supabase/server";
 import { generalRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 import { OrganizerRegistrationSchema } from "@/lib/validations/organizer.schema";

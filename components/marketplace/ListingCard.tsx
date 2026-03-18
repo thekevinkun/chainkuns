@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useAccount } from "wagmi"; // get connected wallet address
+
+import type { Listing } from "@/types";
+
 import { cn } from "@/lib/utils/cn";
 import { formatEth } from "@/lib/utils/format";
-import type { Listing } from "@/types";
 
 interface ListingCardProps {
   listing: Listing;
@@ -36,6 +38,7 @@ const ListingCard = ({ listing, onBuy, onCancel }: ListingCardProps) => {
             src={event.banner_image_url}
             alt={event.title ?? "Event"}
             fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="object-cover"
           />
         ) : (

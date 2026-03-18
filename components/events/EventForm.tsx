@@ -1,10 +1,3 @@
-// ============================================
-// EventForm Component — Chainkuns
-// Full event creation form for approved organizers.
-// Handles: validation, AI description, banner upload,
-// contract deployment, and saving to Supabase.
-// ============================================
-
 "use client";
 
 import { useState } from "react";
@@ -14,12 +7,13 @@ import { usePublicClient, useWalletClient } from "wagmi";
 import { parseEther } from "viem";
 import { createEvent, updateEventContract } from "@/app/actions/event";
 import { generateEventDescription } from "@/app/actions/ai";
+
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import Card, { CardBody } from "@/components/ui/Card";
 
-import { EventFormState } from "@/types";
+import type { EventFormState } from "@/types";
 import { CONTRACT_ABI, CONTRACT_BYTECODE } from "@/lib/web3/contract";
 import {
   uploadImage,
@@ -387,6 +381,7 @@ const EventForm = () => {
                   src={bannerPreview}
                   alt="Banner preview"
                   fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover"
                 />
               </div>

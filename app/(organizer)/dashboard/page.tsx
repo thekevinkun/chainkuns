@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+
 import { OrganizerDashboard } from "@/components/organizer";
 
-import { Event } from "@/types";
+import type { Event } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
