@@ -70,7 +70,7 @@ const Header = () => {
 
           {/* ── Desktop Navigation (Center) ── */}
           <nav
-            className="hidden md:flex items-center gap-1 flex-shrink-0"
+            className="hidden lg:flex items-center gap-1 flex-shrink-0"
             aria-label="Main navigation"
           >
             {NAV_LINKS.filter((link) => !link.requiresAuth || !!session).map(
@@ -98,7 +98,7 @@ const Header = () => {
               <Link
                 href="/dashboard"
                 className={cn(
-                  "hidden md:flex btn-ghost text-accent-cyan",
+                  "hidden lg:flex btn-ghost text-accent-cyan",
                   pathname === "/dashboard"
                     ? "bg-bg-elevated" // active: highlighted
                     : "hover:bg-bg-elevated/50", // inactive
@@ -114,7 +114,7 @@ const Header = () => {
             {/* Mobile hamburger button — only visible on small screens */}
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="md:hidden btn-ghost p-2"
+              className="lg:hidden btn-ghost p-2"
               aria-label={isMobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={isMobileOpen}
             >
@@ -160,7 +160,7 @@ const Header = () => {
       {/* ── Mobile Dropdown Menu ── */}
       {/* Slides down when hamburger is clicked on mobile */}
       {isMobileOpen && (
-        <div className="md:hidden border-t border-border bg-bg-base">
+        <div className="lg:hidden border-t border-border bg-bg-base">
           <nav
             className="section-container py-4 flex flex-col gap-1"
             aria-label="Mobile navigation"

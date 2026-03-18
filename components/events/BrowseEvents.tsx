@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { EventFilters, EventGrid } from "@/components/events";
 import type { EventWithAvailable } from "@/types";
 
@@ -9,19 +10,16 @@ interface BrowseEventsProps {
 const BrowseEvents = ({ events, totalCount }: BrowseEventsProps) => {
   return (
     <main className="min-h-screen">
-      {/* Page header — consistent with marketplace style */}
+      {/* Page header */}
       <section className="border-b border-border bg-bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col gap-3">
-            {/* Badge */}
             <span className="text-xs font-semibold uppercase tracking-widest text-accent-cyan">
               Browse Events
             </span>
-
             <h1 className="section-heading text-text-primary">
               Discover <span className="gradient-text">Events</span>
             </h1>
-
             <p className="text-text-secondary max-w-xl">
               {totalCount > 0
                 ? `${totalCount} active event${
@@ -36,15 +34,19 @@ const BrowseEvents = ({ events, totalCount }: BrowseEventsProps) => {
       {/* Content — filters + grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Mobile: filters above grid */}
+          {/* Mobile filters */}
           <div className="lg:hidden">
-            <EventFilters />
+            <Suspense fallback={null}>
+              <EventFilters />
+            </Suspense>
           </div>
 
-          {/* Desktop: sticky sidebar */}
+          {/* Desktop sidebar */}
           <aside className="hidden lg:block w-56 shrink-0">
             <div className="sticky top-24">
-              <EventFilters />
+              <Suspense fallback={null}>
+                <EventFilters />
+              </Suspense>
             </div>
           </aside>
 

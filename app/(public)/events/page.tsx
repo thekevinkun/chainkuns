@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-
 import { BrowseEvents } from "@/components/events";
-
 import type { Event, EventWithAvailable, EventWithTicketCount } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,15 +9,52 @@ export const metadata: Metadata = {
     "Discover upcoming events and buy tickets as NFTs. Verified organizers, automatic royalties, zero fraud.",
 };
 
-export default async function EventsPage() {
+interface EventsPageProps {
+  searchParams: Promise<{
+    sort?: string;
+    minPrice?: string;
+    maxPrice?: string;
+  }>;
+}
+
+export default async function EventsPage({ searchParams }: EventsPageProps) {
+  // Await search params — required in Next.js 15+
+  const { sort, minPrice, maxPrice } = await searchParams;
+
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  // Start building the query
+  let query = supabase
     .from("events")
     .select("*, tickets(count)")
     .eq("status", "active")
-    .order("event_date", { ascending: true })
     .limit(50);
+
+  // Apply price range filters if provided
+  if (minPrice && !isNaN(parseFloat(minPrice))) {
+    query = query.gte("ticket_price_eth", parseFloat(minPrice));
+  }
+  if (maxPrice && !isNaN(parseFloat(maxPrice))) {
+    query = query.lte("ticket_price_eth", parseFloat(maxPrice));
+  }
+
+  // Apply sort — default to soonest first
+  switch (sort) {
+    case "date_desc":
+      query = query.order("event_date", { ascending: false });
+      break;
+    case "price_asc":
+      query = query.order("ticket_price_eth", { ascending: true });
+      break;
+    case "price_desc":
+      query = query.order("ticket_price_eth", { ascending: false });
+      break;
+    default:
+      // date_asc is the default
+      query = query.order("event_date", { ascending: true });
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("[EventsPage] Supabase error:", error.message);

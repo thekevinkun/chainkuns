@@ -11,7 +11,10 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // We use JWT strategy — session stored in a cookie, not a database
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours — re-sign daily, Web3 standard
+  },
 
   providers: [
     CredentialsProvider({
@@ -91,20 +94,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         // Cast to access our custom fields
         const u = user as { id: string; address: string };
-        token.id = u.id; // Supabase user ID
-        token.address = u.address; // wallet address
+        token.id = u.id;
+        token.address = u.address;
+      }
 
-        // Fetch organizer status ONCE at login — store in JWT
-        // Proxy reads this from the cookie — zero database calls on every request
+      // Re-fetch organizer status on every JWT refresh — not just at login
+      // This ensures approval/rejection is reflected immediately without re-signing
+      if (token.id) {
         const supabase = await createServiceClient();
         const { data: organizer } = await supabase
           .from("organizer_profiles")
           .select("id, status")
-          .eq("user_id", u.id)
+          .eq("user_id", token.id as string)
           .single();
 
         token.organizerStatus = organizer?.status ?? null;
       }
+
       return token;
     },
     async session({ session, token }) {

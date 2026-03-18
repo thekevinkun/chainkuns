@@ -9,6 +9,7 @@ import Card from "@/components/ui/Card";
 import type { Event } from "@/types/organizer";
 
 const EventTable = ({ events }: { events: Event[] }) => {
+  // ── Empty state ──
   if (events.length === 0) {
     return (
       <Card className="p-12 text-center space-y-3">
@@ -23,56 +24,106 @@ const EventTable = ({ events }: { events: Event[] }) => {
   }
 
   return (
-    <Card className="overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-text-secondary">
-            <th className="text-left px-6 py-4 font-medium">Event</th>
-            <th className="text-left px-6 py-4 font-medium">Status</th>
-            <th className="text-left px-6 py-4 font-medium">Price</th>
-            <th className="text-left px-6 py-4 font-medium">Capacity</th>
-            <th className="text-left px-6 py-4 font-medium">Created</th>
-            <th className="px-6 py-4" />
-          </tr>
-        </thead>
-        <tbody>
-          {events.map((event) => (
-            <tr
-              key={event.id}
-              className="border-b border-border last:border-0 hover:bg-bg-elevated transition-colors"
-            >
-              <td className="px-6 py-4 font-medium">{event.title}</td>
-              <td className="px-6 py-4">
-                <Badge
-                  variant={
-                    (event.status as "active" | "cancelled" | "soldout") ??
-                    "default"
-                  }
-                >
-                  {event.status ?? "—"}
-                </Badge>
-              </td>
-              <td className="px-6 py-4 font-mono">
-                {event.ticket_price_eth} ETH
-              </td>
-              <td className="px-6 py-4">{event.total_supply}</td>
-              <td className="px-6 py-4 text-text-secondary">
+    <>
+      {/* ── MOBILE: Card stack (hidden on md+) ── */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {events.map((event) => (
+          <Card key={event.id} className="p-4 space-y-3">
+            {/* Top row: title + badge */}
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-medium text-text-primary leading-snug">
+                {event.title}
+              </p>
+              <Badge
+                variant={
+                  (event.status as "active" | "cancelled" | "soldout") ??
+                  "default"
+                }
+              >
+                {event.status ?? "—"}
+              </Badge>
+            </div>
+
+            {/* Middle row: price + capacity */}
+            <div className="flex items-center gap-4 text-sm text-text-secondary">
+              <span>
+                <span className="text-text-primary font-mono">
+                  {event.ticket_price_eth} ETH
+                </span>
+                {" · "}
+                {event.total_supply} tickets
+              </span>
+              <span className="ml-auto">
                 {event.created_at
                   ? new Date(event.created_at).toLocaleDateString()
                   : "—"}
-              </td>
-              <td className="px-6 py-4">
-                <Link href={`/events/${event.id}/manage`}>
-                  <Button size="sm" variant="ghost">
-                    Manage
-                  </Button>
-                </Link>
-              </td>
+              </span>
+            </div>
+
+            {/* Bottom row: action */}
+            <div className="pt-1">
+              <Link href={`/events/${event.id}/manage`} className="block">
+                <Button size="sm" variant="ghost" className="w-full">
+                  Manage →
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* ── DESKTOP: Full table (hidden on mobile) ── */}
+      <Card className="overflow-hidden hidden md:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-text-secondary">
+              <th className="text-left px-6 py-4 font-medium">Event</th>
+              <th className="text-left px-6 py-4 font-medium">Status</th>
+              <th className="text-left px-6 py-4 font-medium">Price</th>
+              <th className="text-left px-6 py-4 font-medium">Capacity</th>
+              <th className="text-left px-6 py-4 font-medium">Created</th>
+              <th className="px-6 py-4" />
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </Card>
+          </thead>
+          <tbody>
+            {events.map((event) => (
+              <tr
+                key={event.id}
+                className="border-b border-border last:border-0 hover:bg-bg-elevated transition-colors"
+              >
+                <td className="px-6 py-4 font-medium">{event.title}</td>
+                <td className="px-6 py-4">
+                  <Badge
+                    variant={
+                      (event.status as "active" | "cancelled" | "soldout") ??
+                      "default"
+                    }
+                  >
+                    {event.status ?? "—"}
+                  </Badge>
+                </td>
+                <td className="px-6 py-4 font-mono">
+                  {event.ticket_price_eth} ETH
+                </td>
+                <td className="px-6 py-4">{event.total_supply}</td>
+                <td className="px-6 py-4 text-text-secondary">
+                  {event.created_at
+                    ? new Date(event.created_at).toLocaleDateString()
+                    : "—"}
+                </td>
+                <td className="px-6 py-4">
+                  <Link href={`/events/${event.id}/manage`}>
+                    <Button size="sm" variant="ghost">
+                      Manage
+                    </Button>
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </>
   );
 };
 

@@ -23,11 +23,10 @@ const EventManage = ({ event, tickets }: EventManageProps) => {
   return (
     <main className="section-container py-12 space-y-10">
       {/* ── Back link ── */}
-      <Link
+      {/* <Link
         href="/dashboard"
         className="btn-ghost text-sm inline-flex items-center gap-2"
       >
-        {/* Left arrow icon */}
         <svg
           width="16"
           height="16"
@@ -44,7 +43,7 @@ const EventManage = ({ event, tickets }: EventManageProps) => {
           />
         </svg>
         Back to Dashboard
-      </Link>
+      </Link> */}
 
       {/* ── Event Header ── */}
       <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-br from-accent-violet/30 to-accent-cyan/20">
