@@ -1,0 +1,21 @@
+{
+  "name": "Chainkuns",
+  "short_name": "Chainkuns",
+  "description": "Buy, sell, and verify event tickets as NFTs. Powered by Ethereum.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080d0d",
+  "theme_color": "#080d0d",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

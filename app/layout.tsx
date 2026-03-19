@@ -30,7 +30,6 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 // ── Metadata ──
-
 export const metadata: Metadata = {
   // Base URL for all relative OG image URLs
   metadataBase: new URL(
@@ -69,6 +68,7 @@ export const metadata: Metadata = {
   // Favicon and web manifest
   icons: {
     icon: [
+      { url: "/favicon.ico" },
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
     ],
@@ -78,13 +78,11 @@ export const metadata: Metadata = {
 };
 
 // ── Viewport ──
-
 export const viewport: Viewport = {
   themeColor: "#0a0f0f", // matches --color-bg-base (dark browser chrome on mobile)
 };
 
 // ── Layout Component ──
-
 export default function RootLayout({
   children,
 }: {
