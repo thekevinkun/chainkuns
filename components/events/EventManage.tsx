@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import Badge from "@/components/ui/Badge";
 import {
@@ -12,14 +11,18 @@ import type { Event, Ticket } from "@/types";
 interface EventManageProps {
   event: Event;
   tickets: Ticket[];
+  totalTicketsSold: number;
+  totalTicketsUsed: number;
+  totalRevenue: number;
 }
 
-const EventManage = ({ event, tickets }: EventManageProps) => {
-  // ── Calculate stats ──
-  const ticketsSold = tickets?.length ?? 0; // total tickets sold
-  const ticketsUsed = tickets?.filter((t) => t.is_used).length ?? 0; // tickets used at door
-  const revenue = ticketsSold * Number(event.ticket_price_eth); // total revenue in ETH
-
+const EventManage = ({
+  event,
+  tickets,
+  totalTicketsUsed,
+  totalTicketsSold,
+  totalRevenue,
+}: EventManageProps) => {
   return (
     <main className="section-container py-12 space-y-10">
       {/* ── Back link ── */}
@@ -55,6 +58,7 @@ const EventManage = ({ event, tickets }: EventManageProps) => {
             priority // above the fold — load immediately
             sizes="100vw"
             className="object-cover"
+            unoptimized
           />
         ) : (
           // Fallback if no banner
@@ -72,6 +76,7 @@ const EventManage = ({ event, tickets }: EventManageProps) => {
             <h1 className="text-2xl font-bold text-white">{event.title}</h1>
             <Badge
               variant={event.status === "active" ? "active" : "cancelled"}
+              className="bg-bg-base/30 backdrop-blur-sm"
               dot
             >
               {event.status === "active" ? "Live" : event.status}
@@ -100,7 +105,7 @@ const EventManage = ({ event, tickets }: EventManageProps) => {
             Tickets Sold
           </p>
           <p className="text-2xl font-bold text-text-primary mono-text">
-            {ticketsSold}
+            {totalTicketsSold}
             <span className="text-text-secondary text-sm font-normal">
               /{event.total_supply}
             </span>
@@ -113,9 +118,9 @@ const EventManage = ({ event, tickets }: EventManageProps) => {
             Validated
           </p>
           <p className="text-2xl font-bold text-text-primary mono-text">
-            {ticketsUsed}
+            {totalTicketsUsed}
             <span className="text-text-secondary text-sm font-normal">
-              /{ticketsSold}
+              /{totalTicketsSold}
             </span>
           </p>
         </div>
@@ -126,7 +131,7 @@ const EventManage = ({ event, tickets }: EventManageProps) => {
             Revenue
           </p>
           <p className="text-2xl font-bold text-text-primary mono-text">
-            {revenue.toFixed(4)}
+            {totalRevenue.toFixed(4)}
             <span className="text-text-secondary text-sm font-normal">
               {" "}
               ETH

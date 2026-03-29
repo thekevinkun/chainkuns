@@ -10,7 +10,7 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useSignMessage } from "wagmi";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { buildSiweMessage } from "@/lib/web3/siwe";
 import { cn } from "@/lib/utils/cn";
 
@@ -18,31 +18,43 @@ interface WalletConnectProps {
   className?: string; // optional extra classes from parent
 }
 
-export default function WalletConnect({ className }: WalletConnectProps) {
+const WalletConnect = ({ className }: WalletConnectProps) => {
   // Get connected wallet info from wagmi
-  const { address, chainId, isConnected, isReconnecting } = useAccount();
+  const { address, chainId, isConnected, status } = useAccount();
 
   // NextAuth session — tells us if user is fully signed in
-  const { data: session, status } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
 
   // wagmi hook to request a signature from MetaMask
   const { signMessageAsync } = useSignMessage();
 
-  // Ref to prevent signing twice if component re-renders
-  const hasSigned = useRef(false);
+  // Track whether the user explicitly clicked "Connect Wallet".
+  // We only auto-start SIWE after real user intent, not after passive reconnects.
+  const shouldAutoSignInRef = useRef(false);
 
-  const siweSignIn = async () => {
+  // Hold the latest wagmi sign function without recreating our sign-in logic.
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const signMessageRef = useRef(signMessageAsync);
+
+  const siweSignIn = useCallback(async () => {
     try {
+      // Lock the sign-in flow so repeated clicks do not fire multiple requests.
+      setIsSigningIn(true);
       console.log("Starting SIWE sign in flow", { address, chainId });
       // Step 1 — fetch a fresh nonce from our server
       const nonceRes = await fetch("/api/auth/nonce");
       const { nonce } = await nonceRes.json();
 
+      // Stop early if the wallet details vanished before signing began.
+      if (!address || !chainId) {
+        return;
+      }
+
       // Step 2 — build the message the user will sign in MetaMask
       const message = buildSiweMessage({
-        address: address!,
+        address,
         nonce,
-        chainId: chainId!,
+        chainId,
       });
 
       // Step 3 — ask user to sign the message in MetaMask
@@ -57,45 +69,54 @@ export default function WalletConnect({ className }: WalletConnectProps) {
     } catch (error) {
       // User rejected signature or something went wrong
       console.error("SIWE sign in failed:", error);
-      hasSigned.current = false; // reset so they can try again
+    } finally {
+      // Unlock the sign-in flow after success or failure.
+      setIsSigningIn(false);
     }
-  };
+  }, [address, chainId]);
 
-  // ── SIWE Sign In Flow ──
   useEffect(() => {
-    console.log("WalletConnect useEffect triggered", {
-      isConnected,
-      address,
-      chainId,
-      sessionExists: !!session,
-      status,
-    });
+    // Always keep the ref pointed at the newest sign function from wagmi.
+    signMessageRef.current = signMessageAsync;
+  }, [signMessageAsync]);
 
-    // Wait for NextAuth to finish loading before doing anything
-    if (status === "loading") return;
-
-    // If session already exists — do nothing, already signed in
+  useEffect(() => {
+    // Stop waiting for auto sign-in once a real app session already exists.
     if (session) {
-      console.log("Session already exists, skipping SIWE sign in");
-      hasSigned.current = true;
+      shouldAutoSignInRef.current = false;
       return;
     }
 
-    console.log("Checking conditions for SIWE sign in");
+    // Clear the intent flag if the wallet is not connected anymore.
+    if (!isConnected) {
+      shouldAutoSignInRef.current = false;
+      return;
+    }
 
-    // Only trigger SIWE if wallet is connected and no session exists
-    if (!isConnected || !address || !chainId || hasSigned.current) return;
+    // Only auto-start SIWE after the user explicitly clicked connect.
+    if (!shouldAutoSignInRef.current) return;
 
-    hasSigned.current = true;
+    // Wait until NextAuth finishes checking whether a session already exists.
+    if (sessionStatus === "loading") return;
 
-    siweSignIn();
-  }, [isConnected, address, chainId, session, status]);
+    // Do not auto-sign if required wallet data is still missing.
+    if (!address || !chainId) return;
 
-  const signMessageRef = useRef(signMessageAsync);
+    // Do not auto-sign while another sign-in request is already running.
+    if (isSigningIn) return;
 
-  useEffect(() => {
-    signMessageRef.current = signMessageAsync;
-  }, [signMessageAsync]);
+    // Consume the one-time connect intent before starting SIWE.
+    shouldAutoSignInRef.current = false;
+    void siweSignIn();
+  }, [
+    isConnected,
+    address,
+    chainId,
+    session,
+    sessionStatus,
+    isSigningIn,
+    siweSignIn,
+  ]);
 
   const mounted = useRef(false);
 
@@ -108,19 +129,21 @@ export default function WalletConnect({ className }: WalletConnectProps) {
   useEffect(() => {
     if (!session) return;
     if (isConnected) return;
+    if (status === "reconnecting" || status === "connecting") return;
 
-    // Wait 3 seconds before signing out
+    // Wait 5 seconds before signing out
     // This gives wagmi time to reconnect on page refresh
     const timer = setTimeout(() => {
       if (!isConnected) {
         console.log("Wallet disconnected — signing out");
         signOut({ redirect: false });
-        hasSigned.current = false;
+        // Reset the auto-sign flag after a real disconnect.
+        shouldAutoSignInRef.current = false;
       }
-    }, 3000);
+    }, 5000);
 
     return () => clearTimeout(timer);
-  }, [isConnected, session]);
+  }, [isConnected, session, status]);
 
   // ── Custom UI ──
   return (
@@ -148,7 +171,11 @@ export default function WalletConnect({ className }: WalletConnectProps) {
         if (!account) {
           return (
             <button
-              onClick={openConnectModal}
+              onClick={() => {
+                // Mark this connection attempt as user-initiated.
+                shouldAutoSignInRef.current = true;
+                openConnectModal();
+              }}
               className={cn("btn-primary btn-sm", className)}
             >
               Connect Wallet
@@ -188,13 +215,25 @@ export default function WalletConnect({ className }: WalletConnectProps) {
 
             {/* Account button — click to open account modal */}
             <button
-              onClick={openAccountModal}
+              onClick={() => {
+                // If the wallet is connected but the app session is missing,
+                // clicking the wallet button should start SIWE again.
+                if (!session) {
+                  void siweSignIn();
+                  return;
+                }
+
+                // If the app session exists, open the normal wallet account modal.
+                openAccountModal();
+              }}
+              disabled={isSigningIn}
               className={cn(
                 "flex items-center gap-2",
                 "px-3 py-2 rounded-lg",
                 "border border-border hover:border-border-hover",
                 "transition-colors",
                 "text-xs",
+                isSigningIn && "opacity-60 cursor-not-allowed",
                 className,
               )}
             >
@@ -207,7 +246,9 @@ export default function WalletConnect({ className }: WalletConnectProps) {
               )}
 
               {/* Shortened wallet address e.g. 0x1234...5678 */}
-              <span className="mono-text text-xs">{account.displayName}</span>
+              <span className="mono-text text-xs">
+                {isSigningIn ? "Signing In..." : account.displayName}
+              </span>
 
               {/* ETH balance — hidden on small screens */}
               {account.displayBalance && (
@@ -221,4 +262,6 @@ export default function WalletConnect({ className }: WalletConnectProps) {
       }}
     </ConnectButton.Custom>
   );
-}
+};
+
+export default WalletConnect;

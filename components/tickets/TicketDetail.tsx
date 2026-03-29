@@ -41,6 +41,7 @@ const TicketDetail = async ({ typed, event }: TicketDetailProps) => {
               priority
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover"
+              unoptimized
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-6xl">
@@ -50,7 +51,7 @@ const TicketDetail = async ({ typed, event }: TicketDetailProps) => {
 
           {/* Status badge */}
           <div className="absolute top-4 right-4">
-            <Badge variant={typed.is_used ? "cancelled" : "active"} dot>
+            <Badge variant={typed.is_used ? "cancelled" : "active"} className="bg-bg-base/30 backdrop-blur-sm" dot>
               {typed.is_used ? "Used" : "Valid"}
             </Badge>
           </div>

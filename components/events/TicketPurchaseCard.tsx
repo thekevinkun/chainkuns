@@ -202,6 +202,10 @@ const TicketPurchaseCard = ({ event, available }: TicketPurchaseCardProps) => {
 
     if (!result.success) {
       console.error("[TicketPurchaseCard] recordMint failed:", result.error);
+      // Show user a helpful message — they have the NFT on-chain even if DB failed
+      setTxError(
+        `Your ticket was minted on-chain but failed to save. Please contact support with your transaction hash: ${txHash}`,
+      );
     }
 
     setIsSaving(false);

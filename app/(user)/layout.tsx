@@ -8,7 +8,6 @@ export default async function UserLayout({
 }) {
   // Check the user is logged in via SIWE
   const session = await auth();
-  console.log("session mytickets: ", session);
 
   // No session — kick them to home page
   if (!session?.user?.address) {

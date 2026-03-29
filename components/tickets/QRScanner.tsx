@@ -9,60 +9,83 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import jsQR from "jsqr"; // reads QR codes from image pixel data
+import { useRouter } from "next/navigation";
+import jsQR from "jsqr";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { CONTRACT_ABI } from "@/lib/web3/contract"; // contract ABI
-import { validateTicket } from "@/app/actions/ticket"; // Server Action — mirrors to Supabase
+import { CONTRACT_ABI } from "@/lib/web3/contract";
+import { validateTicket, preValidateTicket } from "@/app/actions/ticket";
 
-// Shape of data encoded in the QR code
 interface QRData {
-  tokenId: number; // NFT token ID on-chain
-  contractAddress: string; // the event's contract address
+  tokenId: number;
+  contractAddress: string;
 }
 
-// Possible states for the scanner UI
 type ScanState =
-  | "idle" // waiting for user to start
-  | "scanning" // camera open, looking for QR
-  | "confirming" // found QR, sending blockchain tx
-  | "success" // ticket validated
-  | "error"; // something went wrong
+  | "idle"
+  | "scanning"
+  | "validating"
+  | "confirming"
+  | "success"
+  | "error";
 
 const QRScanner = () => {
-  const videoRef = useRef<HTMLVideoElement>(null); // camera video stream
-  const canvasRef = useRef<HTMLCanvasElement>(null); // hidden canvas for pixel analysis
-  const streamRef = useRef<MediaStream | null>(null); // camera stream reference for cleanup
-  const rafRef = useRef<number>(0); // requestAnimationFrame handle for cleanup
+  const router = useRouter();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number>(0);
 
   const [scanState, setScanState] = useState<ScanState>("idle");
-  const [scannedData, setScannedData] = useState<QRData | null>(null); // parsed QR data
+  const [scannedData, setScannedData] = useState<QRData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // wagmi — calls useTicket() on the contract
-  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const {
+    writeContract,
+    data: txHash,
+    isPending,
+    isError: isTxError,
+    error: txError,
+  } = useWriteContract();
 
-  // wagmi — waits for blockchain confirmation
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({ hash: txHash });
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    isError: isReceiptError,
+  } = useWaitForTransactionReceipt({ hash: txHash });
 
-  // ── Start camera ──
+  // ── Handle transaction errors from wagmi ──
+  useEffect(() => {
+    if (isTxError && txError) {
+      setScanState("error");
+      setErrorMessage(
+        txError.message.includes("User rejected")
+          ? "Transaction cancelled in MetaMask."
+          : "Blockchain transaction failed. Please try again.",
+      );
+    }
+  }, [isTxError, txError]);
+
+  // ── Handle receipt errors (gas too high, etc.) ──
+  useEffect(() => {
+    if (isReceiptError) {
+      setScanState("error");
+      setErrorMessage("Transaction failed on-chain. Please try again.");
+    }
+  }, [isReceiptError]);
+
   const startCamera = async () => {
     setErrorMessage("");
     setScanState("scanning");
 
     try {
-      // Request camera access — prefer back camera on mobile (better for scanning)
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, // environment = back camera
+        video: { facingMode: "environment" },
       });
-
-      streamRef.current = stream; // save for cleanup
-
-      // Attach stream to the video element
+      streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
-        scanFrame(); // start scanning frames
+        scanFrame();
       }
     } catch (err) {
       setScanState("error");
@@ -71,17 +94,12 @@ const QRScanner = () => {
     }
   };
 
-  // ── Stop camera ──
   const stopCamera = useCallback(() => {
-    // Cancel the animation frame loop
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
-    // Stop all camera tracks — releases the camera
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
   }, []);
 
-  // ── Scan each frame for a QR code ──
   const scanFrame = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -90,34 +108,26 @@ const QRScanner = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Match canvas size to video dimensions
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-
-    // Draw the current video frame onto the hidden canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Get the pixel data — jsQR needs this to find the QR code
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    // Try to find a QR code in this frame
     const code = jsQR(imageData.data, imageData.width, imageData.height);
 
     if (code) {
-      // Found a QR code — stop scanning
       stopCamera();
 
       try {
-        // Parse the JSON encoded in the QR: { tokenId, contractAddress }
         const parsed = JSON.parse(code.data) as QRData;
-
-        if (parsed.tokenId === undefined || parsed.tokenId === null || !parsed.contractAddress) {
+        if (
+          parsed.tokenId === undefined ||
+          parsed.tokenId === null ||
+          !parsed.contractAddress
+        ) {
           throw new Error("Invalid QR code format");
         }
-
         setScannedData(parsed);
-        setScanState("confirming");
-        handleValidate(parsed); // trigger blockchain validation
+        handlePreValidate(parsed); // pre-validate BEFORE MetaMask
       } catch {
         setScanState("error");
         setErrorMessage("Invalid QR code. This is not a Chainkuns ticket.");
@@ -125,20 +135,37 @@ const QRScanner = () => {
       return;
     }
 
-    // No QR found yet — check the next frame
     rafRef.current = requestAnimationFrame(scanFrame);
   }, [stopCamera]);
 
-  // ── Validate ticket on blockchain + Supabase ──
+  // ── Pre-validate ticket before calling MetaMask ──
+  const handlePreValidate = async (data: QRData) => {
+    setScanState("validating"); // show checking state
+
+    const result = await preValidateTicket({
+      token_id: data.tokenId,
+      contract_address: data.contractAddress,
+    });
+
+    if (!result.success) {
+      // Ticket is invalid — show error WITHOUT opening MetaMask
+      setScanState("error");
+      setErrorMessage(result.error);
+      return;
+    }
+
+    // Ticket is valid — now open MetaMask
+    setScanState("confirming");
+    handleValidate(data);
+  };
+
   const handleValidate = (data: QRData) => {
     try {
-      // Step 1 — call useTicket() on the blockchain (permanent, trustless)
-      // This marks the ticket as used on-chain — cannot be reversed
       writeContract({
-        address: data.contractAddress as `0x${string}`, // the event's contract
+        address: data.contractAddress as `0x${string}`,
         abi: CONTRACT_ABI,
-        functionName: "useTicket", // marks ticket as used
-        args: [BigInt(data.tokenId)], // which token to mark
+        functionName: "useTicket",
+        args: [BigInt(data.tokenId)],
       });
     } catch (err) {
       setScanState("error");
@@ -151,13 +178,13 @@ const QRScanner = () => {
   // ── Mirror to Supabase after blockchain confirms ──
   useEffect(() => {
     if (isConfirmed && scannedData) {
-      // Step 2 — mirror to Supabase so TicketSalesTable shows it as used
       validateTicket({
         token_id: scannedData.tokenId,
         contract_address: scannedData.contractAddress,
       }).then((result) => {
         if (result.success) {
           setScanState("success");
+          router.refresh(); // refresh page to update stats immediately
         } else {
           setScanState("error");
           setErrorMessage(
@@ -166,28 +193,25 @@ const QRScanner = () => {
         }
       });
     }
-  }, [isConfirmed, scannedData]);
+  }, [isConfirmed, scannedData, router]);
 
-  // ── Cleanup on unmount ──
   useEffect(() => {
-    return () => stopCamera(); // stop camera when component unmounts
+    return () => stopCamera();
   }, [stopCamera]);
 
-  // ── Reset to scan another ticket ──
   const handleReset = () => {
     setScannedData(null);
     setErrorMessage("");
     setScanState("idle");
   };
 
-  // ── Render ──
   return (
     <div className="card-surface p-6 flex flex-col gap-5">
       <h3 className="font-display font-bold text-text-primary text-lg">
         Scan Ticket QR Code
       </h3>
 
-      {/* IDLE — show start button */}
+      {/* IDLE */}
       {scanState === "idle" && (
         <div className="flex flex-col items-center gap-4 py-6">
           <span className="text-5xl">📷</span>
@@ -201,22 +225,19 @@ const QRScanner = () => {
         </div>
       )}
 
-      {/* SCANNING — show live camera feed */}
+      {/* SCANNING */}
       {scanState === "scanning" && (
         <div className="flex flex-col gap-4">
           <div className="relative rounded-xl overflow-hidden bg-bg-base aspect-video">
-            {/* Live camera video */}
             <video
               ref={videoRef}
               className="w-full h-full object-cover"
-              playsInline // required on iOS to prevent fullscreen
-              muted // muted is required for autoplay
+              playsInline
+              muted
             />
-            {/* Scanning overlay — shows a targeting frame */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-48 h-48 border-2 border-accent-cyan rounded-xl opacity-70" />
             </div>
-            {/* Scanning indicator */}
             <div className="absolute bottom-4 left-0 right-0 flex justify-center">
               <div className="bg-bg-base/80 backdrop-blur-sm px-4 py-2 rounded-full">
                 <span className="text-accent-cyan text-xs font-semibold animate-pulse">
@@ -225,10 +246,7 @@ const QRScanner = () => {
               </div>
             </div>
           </div>
-
-          {/* Hidden canvas — jsQR reads pixels from here */}
           <canvas ref={canvasRef} className="hidden" />
-
           <button
             onClick={() => {
               stopCamera();
@@ -241,8 +259,21 @@ const QRScanner = () => {
         </div>
       )}
 
-      {/* CONFIRMING — waiting for blockchain */}
-      {(scanState === "confirming" || isPending || isConfirming) && (
+      {/* VALIDATING — checking ticket before MetaMask */}
+      {scanState === "validating" && (
+        <div className="flex flex-col items-center gap-4 py-6">
+          <span className="text-5xl animate-pulse">🔍</span>
+          <p className="text-text-primary font-semibold">Checking ticket...</p>
+          {scannedData && (
+            <p className="mono-text text-sm text-text-secondary">
+              Token #{scannedData.tokenId}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* CONFIRMING — MetaMask open or waiting for blockchain */}
+      {scanState === "confirming" && (
         <div className="flex flex-col items-center gap-4 py-6">
           <span className="text-5xl animate-pulse">⛓</span>
           <p className="text-text-primary font-semibold">
@@ -258,7 +289,7 @@ const QRScanner = () => {
         </div>
       )}
 
-      {/* SUCCESS — ticket validated */}
+      {/* SUCCESS */}
       {scanState === "success" && (
         <div className="flex flex-col items-center gap-4 py-6">
           <span className="text-5xl">✅</span>
@@ -286,7 +317,7 @@ const QRScanner = () => {
         </div>
       )}
 
-      {/* ERROR — something went wrong */}
+      {/* ERROR */}
       {scanState === "error" && (
         <div className="flex flex-col items-center gap-4 py-6">
           <span className="text-5xl">❌</span>

@@ -108,8 +108,6 @@ const ContractControls = ({ contractAddress }: ContractControlsProps) => {
           )}
         </div>
 
-        <div className="divider my-0" />
-
         {/* ── Pause / Unpause Button ── */}
         <div className="flex flex-col gap-2">
           {isPaused ? (

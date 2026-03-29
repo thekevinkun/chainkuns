@@ -9,9 +9,21 @@ import { NextResponse } from "next/server";
 import { generateNonce } from "@/lib/web3/siwe";
 
 export async function GET() {
-  // Generate a fresh random nonce
+  // Create a new one-time nonce for the next SIWE login attempt.
   const nonce = generateNonce();
 
-  // Return it as JSON to the frontend
-  return NextResponse.json({ nonce });
+  // Build the JSON response that the browser will read.
+  const response = NextResponse.json({ nonce });
+
+  // Save the nonce in a secure cookie so the server can verify it later.
+  response.cookies.set("siwe-nonce", nonce, {
+    httpOnly: true, // Hide the nonce from client-side JavaScript.
+    sameSite: "lax", // Allow normal same-site navigation while reducing CSRF risk.
+    secure: process.env.NODE_ENV === "production", // Only require HTTPS in production.
+    maxAge: 60 * 10, // Expire the nonce after 10 minutes.
+    path: "/", // Make the cookie available to the whole app.
+  });
+
+  // Send the nonce back to the frontend and also store it in the cookie.
+  return response;
 }

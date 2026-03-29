@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePublicClient, useWalletClient } from "wagmi";
 import { parseEther } from "viem";
-import { createEvent, updateEventContract } from "@/app/actions/event";
+import {
+  createEvent,
+  updateEventContract,
+  deleteEvent,
+} from "@/app/actions/event";
 import { generateEventDescription } from "@/app/actions/ai";
 
 import Button from "@/components/ui/Button";
@@ -111,10 +115,10 @@ const EventForm = () => {
 
     try {
       // ── STEP 1: Upload banner image if selected ──
-      let banner_image_url = formData.banner_image_url; // use existing URL if no new file
+      let banner_image_url = formData.banner_image_url;
 
       if (bannerFile) {
-        setSubmitStep("Uploading banner image..."); // update UI step indicator
+        setSubmitStep("Uploading banner image...");
         banner_image_url = await uploadImage("banners", bannerFile, "events");
         if (!banner_image_url) {
           setGlobalError("Failed to upload banner image. Please try again.");
@@ -124,19 +128,18 @@ const EventForm = () => {
         }
       }
 
-      console.log("total_supply raw:", formData.total_supply);
-      console.log("total_supply parsed:", parseInt(formData.total_supply));
+      // console.log("total_supply raw:", formData.total_supply);
+      // console.log("total_supply parsed:", parseInt(formData.total_supply));
 
-      // ── STEP 2: Save event to Supabase via Server Action ──
+      // ── STEP 2: Save event to Supabase ──
       setSubmitStep("Saving event details...");
       const eventResult = await createEvent({
         ...formData,
         banner_image_url,
-        // convert empty strings to proper numbers for Zod validation
         ticket_price_eth: parseFloat(formData.ticket_price_eth),
         total_supply: parseInt(formData.total_supply),
         royalty_percent: parseFloat(formData.royalty_percent),
-        event_date: new Date(formData.event_date).toISOString(), // convert to ISO string for Zod validation
+        event_date: new Date(formData.event_date).toISOString(),
       });
 
       if (!eventResult.success) {
@@ -146,38 +149,57 @@ const EventForm = () => {
         return;
       }
 
-      // ── STEP 3: Deploy EventTicket.sol contract via MetaMask ──
+      // ── STEP 3: Deploy contract via MetaMask ──
       setSubmitStep("Deploying smart contract... Please confirm in MetaMask.");
 
       if (!walletClient || !publicClient) {
+        // Cleanup — delete orphaned event before returning
+        await deleteEvent(eventResult.eventId);
         setGlobalError("Wallet not connected. Please connect your wallet.");
         setIsSubmitting(false);
         setSubmitStep(null);
         return;
       }
 
-      // Deploy the contract — MetaMask will pop up asking for confirmation
-      const hash = await walletClient.deployContract({
-        abi: CONTRACT_ABI, // our EventTicket ABI
-        bytecode: CONTRACT_BYTECODE, // compiled contract bytecode
-        args: [
-          formData.title, // NFT collection name
-          formData.title.slice(0, 4).toUpperCase(), // symbol — first 4 chars e.g. "EAST"
-          parseEther(String(formData.ticket_price_eth)), // ticketPrice in wei
-          BigInt(Number(formData.total_supply)), // maxSupply
-          BigInt(Number(formData.royalty_percent)), // royaltyPercent
-          walletClient.account.address, // organizer wallet
-        ],
-      });
+      let hash: `0x${string}`;
+      try {
+        // Deploy the contract — MetaMask pops up here
+        hash = await walletClient.deployContract({
+          abi: CONTRACT_ABI,
+          bytecode: CONTRACT_BYTECODE,
+          args: [
+            formData.title,
+            formData.title.slice(0, 4).toUpperCase(),
+            parseEther(String(formData.ticket_price_eth)),
+            BigInt(Number(formData.total_supply)),
+            BigInt(Number(formData.royalty_percent)),
+            walletClient.account.address,
+          ],
+        });
+      } catch (deployError) {
+        // User cancelled MetaMask OR transaction failed
+        // Delete the orphaned event from Supabase
+        await deleteEvent(eventResult.eventId);
+        console.error("Contract deployment cancelled or failed:", deployError);
+        setGlobalError(
+          "MetaMask was cancelled. Your event has been removed. Please try again.",
+        );
+        setIsSubmitting(false);
+        setSubmitStep(null);
+        return;
+      }
 
       // ── STEP 4: Wait for contract to be mined ──
       setSubmitStep("Waiting for transaction to confirm...");
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
-      // Get the deployed contract address from the receipt
       const contractAddress = receipt.contractAddress;
       if (!contractAddress) {
-        setGlobalError("Contract deployment failed. Please try again.");
+        // Transaction mined but no contract address — something went wrong
+        await deleteEvent(eventResult.eventId);
+        setGlobalError(
+          "Contract deployment failed. Your event has been removed. Please try again.",
+        );
         setIsSubmitting(false);
         setSubmitStep(null);
         return;
@@ -186,11 +208,13 @@ const EventForm = () => {
       // ── STEP 5: Save contract address to Supabase ──
       setSubmitStep("Saving contract address...");
       const updateResult = await updateEventContract(
-        eventResult.eventId, // the event we just created
-        contractAddress, // the deployed contract address
+        eventResult.eventId,
+        contractAddress,
       );
 
       if (!updateResult.success) {
+        // Contract deployed but failed to save address — cleanup
+        await deleteEvent(eventResult.eventId);
         setGlobalError(updateResult.error);
         setIsSubmitting(false);
         setSubmitStep(null);

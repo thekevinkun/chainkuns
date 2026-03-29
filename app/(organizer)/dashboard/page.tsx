@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { OrganizerDashboard } from "@/components/organizer";
 
 import type { Event } from "@/types";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -14,19 +14,30 @@ export const metadata: Metadata = {
 
 export default async function OrganizerDashboardPage() {
   const session = await auth();
-  const supabase = await createClient();
+
+  // Guard — if no session or no address, redirect to home
+  if (!session?.user?.address) {
+    redirect("/");
+  }
+
+  const supabase = createServiceClient();
 
   // Get user + organizer profile
   const { data: user } = await supabase
     .from("users")
     .select("id")
-    .eq("wallet_address", session!.user.address)
+    .eq("id", session.user.id)
     .single();
+
+  // Guard — if user not found in DB
+  if (!user) {
+    redirect("/");
+  }
 
   const { data: profile } = await supabase
     .from("organizer_profiles")
     .select("id, display_name")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .single();
 
   if (!profile) redirect("/organizer/register");

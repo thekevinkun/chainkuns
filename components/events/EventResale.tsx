@@ -47,6 +47,7 @@ const EventResale = ({ typedEvent, eventId }: EventResaleProps) => {
                   fill
                   sizes="96px"
                   className="object-cover"
+                  unoptimized
                 />
               </div>
             )}

@@ -22,8 +22,14 @@ export async function uploadTicketMetadata(
     const session = await auth();
     if (!session?.user?.address) throw new Error("Not authenticated");
 
-    // Rate limit — shares the mint limiter (same 3/hour window)
-    await checkRateLimit(mintRateLimiter, session.user.address.toLowerCase());
+    // Rate limit — catch and return as proper error instead of throwing
+    try {
+      await checkRateLimit(mintRateLimiter, session.user.address.toLowerCase());
+    } catch (err) {
+      return {
+        error: err instanceof Error ? err.message : "Rate limit exceeded.",
+      };
+    }
 
     const metadata = {
       name: `${input.eventTitle} — Ticket #${input.tokenId}`,

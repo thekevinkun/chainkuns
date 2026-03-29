@@ -32,6 +32,7 @@ const EventHero = ({
             priority // above the fold — load immediately
             sizes="100vw"
             className="object-cover"
+            unoptimized
           />
         ) : (
           // Fallback banner
@@ -44,6 +45,7 @@ const EventHero = ({
         <div className="absolute top-4 right-4">
           <Badge
             variant={event.status === "active" ? "active" : "cancelled"}
+            className="bg-bg-base/30 backdrop-blur-sm"
             dot
           >
             {event.status === "active" ? "Live" : event.status}
@@ -69,6 +71,7 @@ const EventHero = ({
                   height={48}
                   sizes="48px"
                   className="rounded-full object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-accent-violet/40 to-accent-cyan/40 flex items-center justify-center text-xs font-bold text-white">

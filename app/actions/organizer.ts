@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 
 import type { OrganizerActionResult } from "@/types/organizer";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { generalRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 import { OrganizerRegistrationSchema } from "@/lib/validations/organizer.schema";
 
@@ -25,8 +25,8 @@ export async function registerOrganizer(
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
-  
-  const supabase = await createClient();
+
+  const supabase = createServiceClient();
 
   // 4. CHECK — did this user already apply?
   const { data: existingUser } = await supabase
@@ -75,8 +75,7 @@ export async function registerOrganizer(
   };
 }
 
-
-// Admin actions to approve/reject organizers. 
+// Admin actions to approve/reject organizers.
 // Only accessible to the admin wallet defined in env vars.
 export async function approveOrganizer(
   organizerProfileId: string,
@@ -90,7 +89,7 @@ export async function approveOrganizer(
     return { success: false, error: "Unauthorized." };
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { error } = await supabase
     .from("organizer_profiles")
@@ -117,7 +116,7 @@ export async function rejectOrganizer(
     return { success: false, error: "Unauthorized." };
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { error } = await supabase
     .from("organizer_profiles")

@@ -7,7 +7,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { CreateEventSchema } from "@/lib/validations/event.schema";
 import { createEventRateLimiter, checkRateLimit } from "@/lib/ratelimit";
 
@@ -28,15 +28,20 @@ export async function createEvent(
   }
 
   // 2. RATE LIMIT — prevent spam event creation
-  await checkRateLimit(createEventRateLimiter, session.user.address);
+  try {
+    await checkRateLimit(createEventRateLimiter, session.user.address);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Rate limit exceeded.";
+    return { success: false, error: message };
+  }
 
   // 3. VALIDATE — run Zod schema on the form data
   const parsed = CreateEventSchema.safeParse(formData);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0].message };
   }
-  console.log("total_supply from Zod:", parsed.data.total_supply);
-  const supabase = await createClient();
+  // console.log("total_supply from Zod:", parsed.data.total_supply);
+  const supabase = createServiceClient();
 
   // 4. GET user from Supabase using wallet address from session
   const { data: user } = await supabase
@@ -106,7 +111,7 @@ export async function updateEventContract(
     return { success: false, error: "You must connect your wallet first." };
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // 2. GET user from Supabase using wallet address
   const { data: user } = await supabase
@@ -146,4 +151,53 @@ export async function updateEventContract(
   }
 
   return { success: true, eventId }; // return eventId so frontend can redirect
+}
+
+// deleteEvent — Server Action
+// Called when contract deployment fails or is cancelled by user
+// Cleans up the orphaned event record from Supabase
+export async function deleteEvent(eventId: string): Promise<EventActionResult> {
+  // 1. CHECK — is the user logged in?
+  const session = await auth();
+  if (!session?.user?.address) {
+    return { success: false, error: "You must connect your wallet first." };
+  }
+
+  const supabase = createServiceClient();
+
+  // 2. GET user from Supabase
+  const { data: user } = await supabase
+    .from("users")
+    .select("id")
+    .eq("wallet_address", session.user.address)
+    .single();
+
+  if (!user) {
+    return { success: false, error: "User not found." };
+  }
+
+  // 3. GET organizer profile
+  const { data: organizer } = await supabase
+    .from("organizer_profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!organizer) {
+    return { success: false, error: "Organizer profile not found." };
+  }
+
+  // 4. DELETE — only if this event belongs to this organizer
+  // Security check: organizer_id must match — can't delete someone else's event
+  const { error: deleteError } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", eventId)
+    .eq("organizer_id", organizer.id);
+
+  if (deleteError) {
+    return { success: false, error: "Failed to delete event." };
+  }
+
+  return { success: true, eventId };
 }

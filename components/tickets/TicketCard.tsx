@@ -27,6 +27,9 @@ const TicketCard = ({ ticket }: TicketCardProps) => {
   const [isResaleModalOpen, setIsResaleModalOpen] = useState(false);
 
   const event = ticket.event;
+  const ticketHref = event?.contract_address
+    ? `/tickets/${event.contract_address}/${ticket.token_id}`
+    : null;
 
   return (
     <>
@@ -43,6 +46,7 @@ const TicketCard = ({ ticket }: TicketCardProps) => {
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover"
+              unoptimized
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-4xl">
@@ -50,18 +54,18 @@ const TicketCard = ({ ticket }: TicketCardProps) => {
             </div>
           )}
 
-          {/* Used / Valid badge — top right */}
-          <div className="absolute top-3 right-3">
-            <Badge variant={ticket.is_used ? "cancelled" : "active"} dot>
-              {ticket.is_used ? "Used" : "Valid"}
-            </Badge>
-          </div>
-
           {/* Token ID — top left */}
           <div className="absolute top-3 left-3 bg-bg-base/80 backdrop-blur-sm px-2 py-1 rounded-lg">
             <span className="mono-text text-xs font-semibold">
               #{ticket.token_id}
             </span>
+          </div>
+
+          {/* Used / Valid badge — top right */}
+          <div className="absolute top-3 right-3 ">
+            <Badge variant={ticket.is_used ? "cancelled" : "active"} className="bg-bg-base/30 backdrop-blur-sm" dot>
+              {ticket.is_used ? "Used" : "Valid"}
+            </Badge>
           </div>
         </div>
 
@@ -129,12 +133,18 @@ const TicketCard = ({ ticket }: TicketCardProps) => {
               )}
 
               {/* View ticket detail page */}
-              <Link
-                href={`/tickets/${ticket.token_id}`}
-                className="btn-ghost text-xs px-3 py-1.5"
-              >
-                View →
-              </Link>
+              {ticketHref ? (
+                <Link
+                  href={ticketHref}
+                  className="btn-ghost text-xs px-3 py-1.5"
+                >
+                  View →
+                </Link>
+              ) : (
+                <span className="text-text-secondary text-xs px-3 py-1.5">
+                  No contract
+                </span>
+              )}
             </div>
           </div>
         </div>

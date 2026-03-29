@@ -22,6 +22,7 @@ const EventCard = ({ event }: EventCardProps) => {
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover group-hover:scale-105 transition-transform duration-500"
+              unoptimized
             />
           ) : (
             // Fallback if no banner image yet
@@ -34,6 +35,7 @@ const EventCard = ({ event }: EventCardProps) => {
           <div className="absolute top-3 right-3">
             <Badge
               variant={event.status === "active" ? "active" : "cancelled"}
+              className="bg-bg-base/30 backdrop-blur-sm"
               dot
             >
               {event.status === "active" ? "Live" : event.status}

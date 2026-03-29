@@ -6,6 +6,7 @@
 
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { cookies } from "next/headers";
 import { SiweMessage } from "siwe";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -28,13 +29,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       async authorize(credentials) {
         try {
+          // Read the nonce that our server issued just before the SIWE request.
+          const cookieStore = await cookies();
+          const expectedNonce = cookieStore.get("siwe-nonce")?.value;
+
+          // If there is no stored nonce, this login attempt is invalid.
+          if (!expectedNonce) {
+            return null;
+          }
+
           // Parse the SIWE message from the credentials
           const siwe = new SiweMessage(credentials?.message as string);
 
-          // Verify the signature is valid
-          // This proves the user actually owns the wallet
+          // Verify both the signature and the nonce issued by our server.
+          // This proves the user owns the wallet and signed the expected challenge.
           const result = await siwe.verify({
             signature: credentials?.signature as string,
+            nonce: expectedNonce,
           });
 
           if (!result.success) {
@@ -42,18 +53,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
+          // Clear the one-time nonce after successful verification.
+          // This keeps the nonce single-use and avoids leaving it around in cookies.
+          cookieStore.delete("siwe-nonce");
+
           // Signature is valid — get the wallet address
           const walletAddress = siwe.address;
 
           // Connect to Supabase to find or create the user
-          const supabase = await createServiceClient();
+          const supabase = createServiceClient();
 
           // Check if this wallet already has an account
-          const { data: existingUser } = await supabase
-            .from("users")
-            .select("id, wallet_address")
-            .eq("wallet_address", walletAddress.toLowerCase())
-            .single();
+          const { data: existingUser, error: errorExistingUser } =
+            await supabase
+              .from("users")
+              .select("id, wallet_address")
+              .eq("wallet_address", walletAddress.toLowerCase())
+              .single();
+
+          // PGRST116 = no row found — means first-time user, not a real error
+          if (errorExistingUser && errorExistingUser.code !== "PGRST116") {
+            console.error("Fetch user error:", errorExistingUser);
+            return null;
+          }
 
           if (existingUser) {
             // User already exists — return their info
@@ -64,13 +86,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           // First time login — create a new user record
-          const { data: newUser, error } = await supabase
+          const { data: newUser, error: errorNewUser } = await supabase
             .from("users")
             .insert({ wallet_address: walletAddress.toLowerCase() })
             .select("id, wallet_address")
             .single();
 
-          if (error || !newUser) {
+          if (errorNewUser || !newUser) {
             // Failed to create user
             return null;
           }
@@ -101,7 +123,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Re-fetch organizer status on every JWT refresh — not just at login
       // This ensures approval/rejection is reflected immediately without re-signing
       if (token.id) {
-        const supabase = await createServiceClient();
+        const supabase = createServiceClient();
         const { data: organizer } = await supabase
           .from("organizer_profiles")
           .select("id, status")

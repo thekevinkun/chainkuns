@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { EventManage } from "@/components/events";
 
 import type { Ticket, EventStatus } from "@/types";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 
 // ── Dynamic metadata per event ──
 export async function generateMetadata({
@@ -14,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // Fetch just the title for metadata
   const { data: event } = await supabase
@@ -36,7 +36,7 @@ export default async function ManageEventPage({
 }) {
   const { id } = await params; // get event ID from URL
   const session = await auth(); // get current session
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   // ── GET user from Supabase ──
   const { data: user } = await supabase
@@ -97,10 +97,48 @@ export default async function ManageEventPage({
     .eq("event_id", event.id) // only tickets for this event
     .order("token_id", { ascending: true }); // sort by token ID
 
+  // Fetch sold resale listings for this event — for royalty revenue
+  const { data: soldListings } = await supabase
+    .from("listings")
+    .select(
+      `
+      price_eth,
+      ticket:tickets!inner (
+        event:events!inner (
+          id,
+          royalty_percent
+        )
+      )
+    `,
+    )
+    .eq("status", "sold")
+    .eq("ticket.event_id", event.id); // only for this specific event
+
+  // Mint revenue — tickets sold × ticket price
+  const mintRevenue = (tickets ?? []).length * Number(event.ticket_price_eth);
+
+  // Royalty revenue — organizer earns royalty_percent % on every resale
+  const royaltyRevenue = (soldListings ?? []).reduce((sum, listing) => {
+    const royaltyPercent =
+      Number(
+        (listing.ticket as unknown as { event: { royalty_percent: number } })
+          ?.event?.royalty_percent,
+      ) ?? 0;
+    return sum + Number(listing.price_eth) * (royaltyPercent / 100);
+  }, 0);
+
+  // ── Calculate stats ──
+  const totalTicketsSold = tickets?.length ?? 0; // total tickets sold
+  const totalTicketsUsed = tickets?.filter((t) => t.is_used).length ?? 0; // tickets used at door
+  const totalRevenue = mintRevenue + royaltyRevenue; // total revenue = mint revenue + royalties from resales
+
   return (
     <EventManage
       event={{ ...event, status: event.status as EventStatus | null }}
       tickets={(tickets ?? []) as Ticket[]}
+      totalTicketsSold={totalTicketsSold}
+      totalTicketsUsed={totalTicketsUsed}
+      totalRevenue={totalRevenue}
     />
   );
 }
