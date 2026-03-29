@@ -6,6 +6,9 @@ import { EventHero } from "@/components/events";
 import type { Event } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 
+// Never cache this page
+export const dynamic = "force-dynamic";
+
 // ── Dynamic Metadata ──
 // Generates unique OG tags per event for social sharing
 export async function generateMetadata({

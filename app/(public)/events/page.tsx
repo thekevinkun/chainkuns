@@ -3,6 +3,9 @@ import { BrowseEvents } from "@/components/events";
 import type { Event, EventWithAvailable, EventWithTicketCount } from "@/types";
 import { createClient } from "@/lib/supabase/server";
 
+// Never cache this page
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Browse Events",
   description:
