@@ -2,7 +2,10 @@
 
 Chainkuns is a production-grade Web3 NFT event ticketing platform built on Ethereum. Organizers deploy their own smart contracts per event, users mint tickets as NFTs directly to their wallets, and the resale marketplace enforces automatic royalties on-chain — zero middlemen, zero fraud.
 
-Live on Sepolia Testnet.
+Live at [chainkuns.vercel.app](https://chainkuns.vercel.app) on Sepolia Testnet.
+
+<br/><img width="1920" height="1023" alt="chainkuns" src="https://github.com/user-attachments/assets/f7d0ddf7-e8cf-4210-8d08-b19a5a122345" />
+
 
 ---
 
@@ -30,6 +33,7 @@ Live on Sepolia Testnet.
 - Pinata (IPFS — NFT metadata storage)
 - Alchemy (NFT API + Webhooks)
 - OpenAI (AI event description generation)
+- Sentry (error monitoring)
 
 ---
 
@@ -64,7 +68,8 @@ User clicks Buy Ticket
   → wagmi calls mintTicket() on EventTicket.sol
   → ETH sent to contract
   → NFT minted to user wallet
-  → Alchemy Webhook fires → Supabase updated
+  → recordMint() Server Action saves to Supabase (primary)
+  → Alchemy Webhook fires as safety net → Supabase updated (backup)
   → My Tickets page shows new ticket
 
 Organizer creates event
@@ -77,6 +82,12 @@ Resale flow
   → Buyer calls buyTicket() on-chain
   → Contract splits ETH: seller gets (price - royalty), organizer gets royalty
   → Supabase synced via Server Action
+
+QR validation at door
+  → preValidateTicket() checks ticket server-side before MetaMask
+  → useTicket() called on-chain — marks permanently used
+  → validateTicket() mirrors to Supabase
+  → Stats update immediately via router.refresh()
 ```
 
 ---
@@ -100,7 +111,7 @@ chainkuns/
 │   ├── ui/               — Button, Input, Card, Badge, Skeleton, etc.
 │   └── web3/             — WalletConnect, WalletAddress
 ├── contracts/
-│   └── EventTicket.sol   — ERC-721 contract with mint, list, buy, cancel, useTicket
+│   └── EventTicket.sol   — ERC-721 with mint, list, buy, cancel, useTicket
 ├── lib/
 │   ├── supabase/         — Server/client/service Supabase clients + storage upload
 │   ├── web3/             — Contract ABI, bytecode, SIWE message builder
@@ -133,6 +144,7 @@ NEXT_PUBLIC_WALLETCONNECT_ID=your-walletconnect-project-id
 # Alchemy
 ALCHEMY_API_KEY=your-alchemy-api-key
 NEXT_PUBLIC_ALCHEMY_API_KEY=your-alchemy-api-key
+ALCHEMY_WEBHOOK_SIGNING_KEY=your-webhook-signing-key
 
 # Pinata IPFS
 PINATA_JWT=your-pinata-jwt
@@ -143,6 +155,11 @@ UPSTASH_REDIS_REST_TOKEN=your-token
 
 # OpenAI
 OPENAI_API_KEY=sk-proj-...
+
+# Sentry
+SENTRY_AUTH_TOKEN=your-sentry-auth-token
+SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+NEXT_PUBLIC_SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -235,9 +252,9 @@ All write operations use the `service_role` key via Server Actions — never the
 
 ## Security Model
 
-**Defense in depth — 5 layers:**
+**Defense in depth — 6 layers:**
 
-1. **SIWE Auth** — wallet ownership proven cryptographically on login, nonce-based to prevent replay attacks
+1. **SIWE Auth** — wallet ownership proven cryptographically, nonce-based (httpOnly cookie, single-use) to prevent replay attacks
 2. **Server Actions** — all mutations run server-side, wallet address always from JWT session never client input
 3. **Zod Validation** — all inputs validated before any DB operation
 4. **Rate Limiting** — Upstash Redis rate limiters on all sensitive routes
@@ -248,7 +265,8 @@ All write operations use the `service_role` key via Server Actions — never the
 - `owner_wallet` and `seller_wallet` always come from server session, never from client
 - Idempotency keys on mint and buy operations prevent double-processing
 - `cancelListing` requires on-chain tx first, then Supabase sync
-- Pre-validation before MetaMask popup — invalid tickets rejected before spending gas
+- `preValidateTicket` runs before MetaMask popup — invalid tickets rejected before spending gas
+- `deleteEvent` cleans up orphaned Supabase records if MetaMask is cancelled during event creation
 
 ---
 
@@ -274,15 +292,51 @@ All write operations use the `service_role` key via Server Actions — never the
 
 ---
 
-## Key Learnings & Gotchas
+## Alchemy Webhook
 
-- `CONTRACT_BYTECODE` in `lib/web3/contract.ts` must be manually updated after **any** Solidity changes
-- `NEXT_PUBLIC_CONTRACT_ADDRESS` is a placeholder only — real address always comes from `events.contract_address` in Supabase
-- Next.js 15+ dynamic route params must be awaited as `Promise<{ id: string }>`
-- Number inputs stored as `string` in React state, converted only on submit to avoid NaN bugs
-- Rate limiters use `fixedWindow` not `slidingWindow` — keys expire properly in Redis
-- `useOptimistic` in React 19 reverts automatically if the async action fails
-- Wagmi momentarily loses connection state on page reload — disconnect logic must check for `reconnecting` status
+The Alchemy webhook is a safety net for ticket minting. It fires on every `TicketMinted` event on Sepolia and checks if the contract belongs to a Chainkuns event. If `recordMint()` fails (browser crash, network error), the webhook saves the ticket automatically.
+
+**Webhook GraphQL query** (filter by TicketMinted topic only — no address filter needed):
+```graphql
+{
+  block {
+    logs(filter: {
+      topics: ["0xf16f1e8b680ea7f1e8a1f849eb82762cba60ddcef854d36909e3173483281c8c"]
+    }) {
+      transaction {
+        hash
+        from {
+          address
+        }
+      }
+      account {
+        address
+      }
+      topics
+      data
+    }
+  }
+}
+```
+
+**Webhook URL:** `https://chainkuns.vercel.app/api/webhooks/alchemy`
+
+No manual updates needed when new events are created — the handler looks up the contract in Supabase dynamically.
+
+---
+
+## Error Monitoring (Sentry)
+
+Sentry catches production errors automatically. Configured via `@sentry/nextjs`.
+
+**Setup:**
+```bash
+npx @sentry/wizard@latest -i nextjs --saas --org your-org --project your-project
+```
+
+Add `SENTRY_AUTH_TOKEN` to Vercel environment variables. Test via `/sentry-example-page` on production.
+
+**Day-to-day:** Set up an alert in Sentry dashboard → Alerts → Create Alert → "An issue is first seen" → add your email. You'll be notified automatically when something breaks in production.
 
 ---
 
@@ -290,13 +344,52 @@ All write operations use the `service_role` key via Server Actions — never the
 
 1. Push to GitHub
 2. Import repo on [Vercel](https://vercel.com)
-3. Add all environment variables from `.env.local`
+3. Add all environment variables
 4. Set `NEXT_PUBLIC_USE_REAL_AI=true` for production
-5. Set `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_SITE_URL` to your Vercel URL
+5. Set `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXTAUTH_URL` to your Vercel URL
 6. Set domain allowlist on [Alchemy dashboard](https://dashboard.alchemy.com)
 7. Set allowed origins on [WalletConnect dashboard](https://cloud.walletconnect.com)
-8. Register Alchemy Webhook pointing to `https://yourdomain.com/api/webhooks/alchemy`
-9. Deploy
+8. Register Alchemy Webhook → `https://yourdomain.com/api/webhooks/alchemy`
+9. Add `SENTRY_AUTH_TOKEN` to Vercel
+10. Deploy
+
+---
+
+## Key Learnings & Gotchas
+
+- `CONTRACT_BYTECODE` in `lib/web3/contract.ts` must be manually updated after **any** Solidity changes
+- `NEXT_PUBLIC_CONTRACT_ADDRESS` is a placeholder only — real address always comes from `events.contract_address` in Supabase
+- Next.js 15+ dynamic route params must be awaited as `Promise<{ id: string }>`
+- Number inputs stored as `string` in React state, converted only on submit to avoid NaN bugs
+- Rate limiters use `fixedWindow` not `slidingWindow` — keys expire properly in Redis
+- Wagmi momentarily loses connection state on page reload — disconnect logic must check for `reconnecting` status before signing out
+- All Server Actions must use `createServiceClient()` not `createClient()` for writes — RLS blocks anon key writes
+- Token IDs reset per contract — ticket route is `/tickets/[contractAddress]/[tokenId]` not `/tickets/[tokenId]`
+- `"use cache"` directive requires `cacheComponents: true` in `next.config.ts` which triggers strict rendering mode — skip until stable
+
+---
+
+## Screenshots
+
+**Browse Events**
+
+<img width="1920" height="1561" alt="browse events" src="https://github.com/user-attachments/assets/cfba3d5e-76d8-4545-b66d-231696eb76f3" /><br />
+
+**My Tickets**
+
+<img width="1920" height="1521" alt="my tickets" src="https://github.com/user-attachments/assets/ece6d702-d0e5-42e9-a214-baab0deb2ae3" /><br />
+
+**Tickets Detail**
+
+<img width="1920" height="1960" alt="tickets detail" src="https://github.com/user-attachments/assets/433ce602-1e39-4add-ac5c-5443dc23a55d" /><br />
+
+**Marketplace**
+
+<img width="1920" height="1521" alt="marketplace" src="https://github.com/user-attachments/assets/8d00de53-8508-415f-8c9d-620aeaee461d" /><br />
+
+**Organizer Events Manage**
+
+<img width="1920" height="1976" alt="organizer events manage" src="https://github.com/user-attachments/assets/17d580e9-9863-46bf-a067-ce14f8906c47" /><br />
 
 ---
 
